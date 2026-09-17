@@ -6,7 +6,11 @@
   <nav aria-label="Navigation principale">
     <a routerLink="/tracks">Backing tracks</a>
     <a routerLink="/profile">Profil</a>
-    <a routerLink="/login">Connexion</a>
+    @if (auth.token()) {
+      <button type="button" (click)="logout()">Déconnexion</button>
+    } @else {
+      <a routerLink="/login">Connexion</a>
+    }
   </nav>
 </header>
 

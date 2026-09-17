@@ -1,9 +1,35 @@
 <section class="card">
   <h1>Créer un compte</h1>
   <form [formGroup]="form" (ngSubmit)="submit()">
-    <label>Nom<input formControlName="name" /></label>
-    <label>Email<input type="email" formControlName="email" /></label>
-    <label>Mot de passe<input type="password" formControlName="password" /></label>
+    <label>
+      Nom
+      <input formControlName="name" />
+      @if (form.controls.name.invalid && form.controls.name.touched) {
+        <span class="field-error">Nom requis</span>
+      }
+    </label>
+    <label>
+      Email
+      <input type="email" formControlName="email" />
+      @if (form.controls.email.invalid && form.controls.email.touched) {
+        @if (form.controls.email.errors?.['required']) {
+          <span class="field-error">Email requis</span>
+        } @else if (form.controls.email.errors?.['email']) {
+          <span class="field-error">Format d'email invalide</span>
+        }
+      }
+    </label>
+    <label>
+      Mot de passe
+      <input type="password" formControlName="password" />
+      @if (form.controls.password.invalid && form.controls.password.touched) {
+        @if (form.controls.password.errors?.['required']) {
+          <span class="field-error">Mot de passe requis</span>
+        } @else if (form.controls.password.errors?.['minlength']) {
+          <span class="field-error">8 caractères minimum</span>
+        }
+      }
+    </label>
     <button type="submit">Créer mon compte</button>
   </form>
   @if (error()) {

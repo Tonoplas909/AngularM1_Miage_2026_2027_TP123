@@ -1,0 +1,444 @@
+<title>Parcours de connexion</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;700;800&family=Karla:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ink: #171b22;
+    --ink-soft: #4b525e;
+    --paper: #eef0f2;
+    --surface: #ffffff;
+    --surface-2: #e4e8eb;
+    --line: #c9cfd4;
+    --accent: #b06a1e;
+    --accent-soft: #f3e3cf;
+    --ok: #2f8f68;
+    --ok-soft: #dcefe6;
+    --lock: #b0453a;
+    --lock-soft: #f4dfdb;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #eef1ef;
+      --ink-soft: #a9b1ba;
+      --paper: #12151b;
+      --surface: #1a1e26;
+      --surface-2: #232833;
+      --line: #333a46;
+      --accent: #e0a052;
+      --accent-soft: #3a2f1e;
+      --ok: #5cbb90;
+      --ok-soft: #1c3129;
+      --lock: #e08175;
+      --lock-soft: #3a2422;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink: #eef1ef;
+    --ink-soft: #a9b1ba;
+    --paper: #12151b;
+    --surface: #1a1e26;
+    --surface-2: #232833;
+    --line: #333a46;
+    --accent: #e0a052;
+    --accent-soft: #3a2f1e;
+    --ok: #5cbb90;
+    --ok-soft: #1c3129;
+    --lock: #e08175;
+    --lock-soft: #3a2422;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: auto; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Karla', system-ui, sans-serif;
+    padding: clamp(20px, 5vw, 56px) 16px 64px;
+  }
+
+  .wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+
+  header.page-head { display: flex; flex-direction: column; gap: 10px; }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-family: 'Libre Franklin', sans-serif;
+    font-weight: 800;
+    font-size: clamp(28px, 4.2vw, 40px);
+    line-height: 1.1;
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  .lede {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 65ch;
+    margin: 0;
+  }
+
+  .lede code, p code, td code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.92em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05em 0.4em;
+  }
+
+  section { display: flex; flex-direction: column; gap: 18px; }
+
+  h2 {
+    font-family: 'Libre Franklin', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .section-note {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    margin: -6px 0 0;
+  }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+
+  .diagram-frame {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: clamp(10px, 2vw, 22px);
+    overflow-x: auto;
+  }
+
+  svg.flow-diagram { display: block; width: 100%; height: auto; min-width: 640px; }
+  svg.flow-diagram text { fill: var(--ink); }
+  svg.flow-diagram .lane-name { font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-size: 15px; }
+  svg.flow-diagram .lane-file { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; fill: var(--ink-soft); }
+  svg.flow-diagram .flow-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  svg.flow-diagram .flow-note { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; fill: var(--ink-soft); }
+  svg.flow-diagram .flow-tag-ok { font-family: 'Karla', sans-serif; font-weight: 700; font-size: 11px; fill: var(--ok); }
+  svg.flow-diagram .flow-tag-lock { font-family: 'Karla', sans-serif; font-weight: 700; font-size: 11px; fill: var(--lock); }
+  svg.flow-diagram .legend-label { font-family: 'Karla', sans-serif; font-size: 12px; fill: var(--ink-soft); }
+
+  figcaption {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    max-width: 70ch;
+  }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+    background: var(--surface);
+    font-size: 14px;
+  }
+
+  thead th {
+    text-align: left;
+    font-family: 'Libre Franklin', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr.group-start td { border-top: 2px solid var(--line); }
+  tbody tr.group-start:first-child td { border-top: none; }
+
+  td.route { font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap; }
+  td.method { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; white-space: nowrap; }
+  td.payload, td.response { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--ink-soft); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Karla', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 10px 4px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+  .badge--ok { background: var(--ok-soft); color: var(--ok); }
+  .badge--ok::before { background: var(--ok); }
+
+  .badge--lock { background: var(--lock-soft); color: var(--lock); }
+  .badge--lock::before { background: var(--lock); }
+
+  footer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.7;
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+  }
+
+  footer a { color: var(--ink-soft); }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 26px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="page-head">
+    <p class="eyebrow">TP1 — Angular ↔ Express ↔ MongoDB</p>
+    <h1>Parcours de connexion</h1>
+    <p class="lede">
+      Ce que déclenche un clic sur « Se connecter » dans <code>login-page.html</code>, jusqu'à
+      l'arrivée sur <code>/tracks</code> — et pourquoi certaines routes de l'API n'exigent jamais
+      ce jeton pendant que d'autres le réclament à chaque appel.
+    </p>
+  </header>
+
+  <section>
+    <h2>1. Le clic, étape par étape</h2>
+    <p class="section-note">
+      Cinq acteurs réels du code, dans l'ordre où ils se parlent. Le trait plein vert suit le
+      chemin réussi ; le trait pointillé rouge, le rejet à 401 — les deux repartent du même point,
+      la vérification du mot de passe.
+    </p>
+
+    <figure>
+      <div class="diagram-frame">
+        <svg class="flow-diagram" viewBox="0 0 1080 720" role="img" aria-label="Diagramme de séquence du clic sur Se connecter : le navigateur appelle LoginPageComponent, qui appelle AuthService, qui appelle POST /api/auth/login sans jeton, qui interroge MongoDB ; la réponse repart en sens inverse, avec une branche succès en vert menant à la navigation vers /tracks et une branche 401 en rouge qui affiche l'erreur.">
+          <defs>
+            <marker id="arrow-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink)"></path>
+            </marker>
+            <marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" style="fill:var(--ok)"></path>
+            </marker>
+            <marker id="arrow-lock" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" style="fill:var(--lock)"></path>
+            </marker>
+          </defs>
+
+          <!-- lifelines -->
+          <line x1="110" y1="70" x2="110" y2="680" style="stroke:var(--line)" stroke-width="1.5" stroke-dasharray="3 5"></line>
+          <line x1="330" y1="70" x2="330" y2="680" style="stroke:var(--line)" stroke-width="1.5" stroke-dasharray="3 5"></line>
+          <line x1="550" y1="70" x2="550" y2="680" style="stroke:var(--line)" stroke-width="1.5" stroke-dasharray="3 5"></line>
+          <line x1="780" y1="70" x2="780" y2="680" style="stroke:var(--line)" stroke-width="1.5" stroke-dasharray="3 5"></line>
+          <line x1="990" y1="70" x2="990" y2="680" style="stroke:var(--line)" stroke-width="1.5" stroke-dasharray="3 5"></line>
+
+          <!-- actor boxes -->
+          <rect x="30" y="20" width="160" height="50" rx="10" style="fill:var(--surface);stroke:var(--line)" stroke-width="1.5"></rect>
+          <text x="110" y="41" text-anchor="middle" class="lane-name">Navigateur</text>
+          <text x="110" y="57" text-anchor="middle" class="lane-file">clic « Se connecter »</text>
+
+          <rect x="242" y="20" width="176" height="50" rx="10" style="fill:var(--surface);stroke:var(--line)" stroke-width="1.5"></rect>
+          <text x="330" y="41" text-anchor="middle" class="lane-name">LoginPageComponent</text>
+          <text x="330" y="57" text-anchor="middle" class="lane-file">login-page.ts</text>
+
+          <rect x="462" y="20" width="176" height="50" rx="10" style="fill:var(--surface);stroke:var(--line)" stroke-width="1.5"></rect>
+          <text x="550" y="41" text-anchor="middle" class="lane-name">AuthService</text>
+          <text x="550" y="57" text-anchor="middle" class="lane-file">+ authInterceptor</text>
+
+          <rect x="692" y="20" width="176" height="50" rx="10" style="fill:var(--surface);stroke:var(--line)" stroke-width="1.5"></rect>
+          <text x="780" y="41" text-anchor="middle" class="lane-name">POST /auth/login</text>
+          <text x="780" y="57" text-anchor="middle" class="lane-file">app.js — pas de middleware auth</text>
+
+          <rect x="915" y="20" width="150" height="50" rx="10" style="fill:var(--surface);stroke:var(--line)" stroke-width="1.5"></rect>
+          <text x="990" y="41" text-anchor="middle" class="lane-name">User</text>
+          <text x="990" y="57" text-anchor="middle" class="lane-file">Mongoose / MongoDB</text>
+
+          <!-- r1 A -> B -->
+          <line x1="110" y1="110" x2="330" y2="110" style="stroke:var(--ink)" stroke-width="1.75" marker-end="url(#arrow-ink)"></line>
+          <text x="220" y="102" text-anchor="middle" class="flow-label">submit() — (ngSubmit)</text>
+
+          <!-- r2 B -> C -->
+          <line x1="330" y1="170" x2="550" y2="170" style="stroke:var(--ink)" stroke-width="1.75" marker-end="url(#arrow-ink)"></line>
+          <text x="440" y="162" text-anchor="middle" class="flow-label">login(email, password)</text>
+
+          <!-- r3 C -> D -->
+          <line x1="550" y1="230" x2="780" y2="230" style="stroke:var(--ink)" stroke-width="1.75" marker-end="url(#arrow-ink)"></line>
+          <text x="665" y="222" text-anchor="middle" class="flow-label">POST /api/auth/login {email, password}</text>
+          <text x="665" y="248" text-anchor="middle" class="flow-note">token() = null → aucun en-tête Authorization</text>
+
+          <!-- r4 D -> E -->
+          <line x1="780" y1="300" x2="990" y2="300" style="stroke:var(--ink)" stroke-width="1.75" marker-end="url(#arrow-ink)"></line>
+          <text x="885" y="292" text-anchor="middle" class="flow-label">findOne({email}) + passwordHash</text>
+
+          <!-- r5 E -> D -->
+          <line x1="990" y1="350" x2="780" y2="350" style="stroke:var(--ink)" stroke-width="1.75" marker-end="url(#arrow-ink)"></line>
+          <text x="885" y="342" text-anchor="middle" class="flow-label">verifyPassword(password)</text>
+
+          <!-- r6a D -> C success -->
+          <line x1="780" y1="410" x2="550" y2="410" style="stroke:var(--ok)" stroke-width="2" marker-end="url(#arrow-ok)"></line>
+          <text x="665" y="402" text-anchor="middle" class="flow-label">200 {token, user}</text>
+
+          <!-- r6b D -> C error -->
+          <line x1="780" y1="448" x2="550" y2="448" style="stroke:var(--lock)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-lock)"></line>
+          <text x="665" y="440" text-anchor="middle" class="flow-label">401 {message}</text>
+
+          <!-- r7a C -> B success -->
+          <line x1="550" y1="510" x2="330" y2="510" style="stroke:var(--ok)" stroke-width="2" marker-end="url(#arrow-ok)"></line>
+          <text x="440" y="502" text-anchor="middle" class="flow-label">storeAuthentication()</text>
+          <text x="440" y="526" text-anchor="middle" class="flow-note">localStorage['gpc_token'] + signals token / currentUser</text>
+
+          <!-- r7b C -> B error -->
+          <line x1="550" y1="562" x2="330" y2="562" style="stroke:var(--lock)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-lock)"></line>
+          <text x="440" y="554" text-anchor="middle" class="flow-label">error.set(message)</text>
+
+          <!-- r8a B -> A success -->
+          <line x1="330" y1="622" x2="110" y2="622" style="stroke:var(--ok)" stroke-width="2" marker-end="url(#arrow-ok)"></line>
+          <text x="220" y="614" text-anchor="middle" class="flow-label">navigateByUrl('/tracks')</text>
+          <text x="220" y="638" text-anchor="middle" class="flow-note">authGuard : token() présent ⇒ accès autorisé</text>
+
+          <!-- r8b B -> A error -->
+          <line x1="330" y1="662" x2="110" y2="662" style="stroke:var(--lock)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-lock)"></line>
+          <text x="220" y="678" text-anchor="middle" class="flow-label">affiche l'erreur — reste sur /login</text>
+
+          <!-- legend -->
+          <line x1="700" y1="702" x2="730" y2="702" style="stroke:var(--ok)" stroke-width="2"></line>
+          <text x="736" y="706" class="legend-label">chemin réussi (2xx)</text>
+          <line x1="860" y1="702" x2="890" y2="702" style="stroke:var(--lock)" stroke-width="2" stroke-dasharray="6 4"></line>
+          <text x="896" y="706" class="legend-label">rejet (401)</text>
+        </svg>
+      </div>
+      <figcaption>
+        Les deux branches repartent du même appel réseau : c'est la réponse de <code>POST /api/auth/login</code>
+        qui décide si <code>AuthService</code> écrit un jeton dans <code>localStorage</code> et si le routeur
+        laisse passer <code>authGuard</code> vers <code>/tracks</code>, ou si <code>LoginPageComponent</code>
+        se contente d'afficher <code>error()</code> sans bouger.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>2. Contrat API — routes publiques vs protégées</h2>
+    <p class="section-note">
+      Directement depuis <code>API_CONTRACT.md</code> : la ligne d'en-tête du contrat dit tout —
+      « Sauf inscription et connexion, envoyer <code>Authorization: Bearer &lt;token&gt;</code> ».
+      Une route protégée passe par le middleware <code>auth</code> de <code>app.js</code>, qui rejette
+      toute requête sans jeton valide en <code>401</code> avant même d'atteindre MongoDB.
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Méthode</th>
+            <th>Route</th>
+            <th>Accès</th>
+            <th>Requête</th>
+            <th>Réponse</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group-start">
+            <td class="method">GET</td>
+            <td class="route">/health</td>
+            <td><span class="badge badge--ok">Publique</span></td>
+            <td class="payload">—</td>
+            <td class="response">{"status":"ok"}</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td class="route">/auth/register</td>
+            <td><span class="badge badge--ok">Publique</span></td>
+            <td class="payload">{name, email, password}</td>
+            <td class="response">201 {token, user}</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td class="route">/auth/login</td>
+            <td><span class="badge badge--ok">Publique</span></td>
+            <td class="payload">{email, password}</td>
+            <td class="response">200 {token, user}</td>
+          </tr>
+          <tr class="group-start">
+            <td class="method">GET</td>
+            <td class="route">/users/me</td>
+            <td><span class="badge badge--lock">Protégée</span></td>
+            <td class="payload">JWT</td>
+            <td class="response">200 User</td>
+          </tr>
+          <tr>
+            <td class="method">PUT</td>
+            <td class="route">/users/me</td>
+            <td><span class="badge badge--lock">Protégée</span></td>
+            <td class="payload">{name} + JWT</td>
+            <td class="response">200 User</td>
+          </tr>
+          <tr>
+            <td class="method">GET</td>
+            <td class="route">/tracks?page&amp;limit</td>
+            <td><span class="badge badge--lock">Protégée</span></td>
+            <td class="payload">JWT</td>
+            <td class="response">Page&lt;Track&gt;</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td class="route">/tracks</td>
+            <td><span class="badge badge--lock">Protégée</span></td>
+            <td class="payload">multipart: audio, title + JWT</td>
+            <td class="response">201 Track</td>
+          </tr>
+          <tr>
+            <td class="method">GET</td>
+            <td class="route">/tracks/:id/audio</td>
+            <td><span class="badge badge--lock">Protégée</span></td>
+            <td class="payload">JWT</td>
+            <td class="response">flux audio</td>
+          </tr>
+          <tr>
+            <td class="method">DELETE</td>
+            <td class="route">/tracks/:id</td>
+            <td><span class="badge badge--lock">Protégée</span></td>
+            <td class="payload">JWT</td>
+            <td class="response">204 (bonus)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Sources — API_CONTRACT.md · backend/src/app.js · frontend-starter/src/app/components/login-page/{login-page.ts,login-page.html}
+    · frontend-starter/src/app/shared/{services/auth.service.ts,interceptors/auth.interceptor.ts,guards/auth.guard.ts} · frontend-starter/src/app/routes.ts
+  </footer>
+
+</div>

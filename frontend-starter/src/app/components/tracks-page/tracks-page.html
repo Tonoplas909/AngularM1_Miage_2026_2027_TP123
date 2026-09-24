@@ -43,20 +43,34 @@
         {{ uploading() ? 'Envoi en cours…' : 'Envoyer' }}
       </button>
 
-      <!-- aria-live : les lecteurs d'écran annoncent ces messages sans que
+      <!-- TP3 Mission 6 : les quatre états de l'envoi, pilotés par uploadState().
+           aria-live : les lecteurs d'écran annoncent ces messages sans que
            l'utilisateur ait besoin de retrouver la zone au clavier. -->
-      <p class="status" aria-live="polite">
-        @if (uploading()) {
-          <span>Envoi du fichier…</span>
+      <div class="status" aria-live="polite">
+        @switch (uploadState()) {
+          @case ('uploading') {
+            <p class="upload-progress">
+              @if (uploadProgress() !== null) {
+                Envoi en cours… {{ uploadProgress() }} %
+              } @else {
+                Envoi en cours…
+              }
+            </p>
+            <!-- Barre déterminée dès qu'un pourcentage est connu, indéterminée
+                 sinon (taille totale non annoncée par le navigateur). -->
+            <mat-progress-bar
+              [mode]="uploadProgress() === null ? 'indeterminate' : 'determinate'"
+              [value]="uploadProgress() ?? 0"
+            />
+          }
+          @case ('success') {
+            <p class="success">{{ uploadSuccess() }}</p>
+          }
+          @case ('error') {
+            <p class="error" role="alert">{{ uploadError() }}</p>
+          }
         }
-        @if (uploadSuccess()) {
-          <span class="success">{{ uploadSuccess() }}</span>
-        }
-      </p>
-
-      @if (uploadError()) {
-        <p class="error" role="alert">{{ uploadError() }}</p>
-      }
+      </div>
     </article>
 
     <!-- ================= Bibliothèque paginée (Mission 2) ================= -->

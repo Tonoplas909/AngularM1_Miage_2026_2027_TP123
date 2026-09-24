@@ -110,3 +110,5 @@ button.secondary {
 }
 
 button.danger { background: #a33; }
+
+.upload-progress { margin: 0 0 0.4rem; font-size: 0.85rem; }

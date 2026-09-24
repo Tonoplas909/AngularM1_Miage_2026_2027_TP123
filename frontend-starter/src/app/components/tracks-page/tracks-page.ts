@@ -1,7 +1,16 @@
-import { Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { HttpErrorResponse, HttpEventType } from '@angular/common/http';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Track } from '../../shared/models/track.model';
 import { TrackService } from '../../shared/services/track.service';
@@ -14,8 +23,15 @@ import {
 /** Tailles de page proposées : le backend refuse tout limit supérieur à 20. */
 const PAGE_SIZE_OPTIONS = [5, 10, 20];
 
+/**
+ * TP3 Mission 6 : les quatre états demandés pour l'envoi. Un seul Signal les
+ * porte, ce qui rend impossible une combinaison incohérente (par exemple
+ * « en cours » et « réussi » en même temps).
+ */
+export type UploadState = 'idle' | 'uploading' | 'success' | 'error';
+
 @Component({
-  imports: [ReactiveFormsModule, MatPaginatorModule],
+  imports: [ReactiveFormsModule, MatPaginatorModule, MatProgressBarModule],
   templateUrl: './tracks-page.html',
   styleUrl: './tracks-page.css',
 })
@@ -46,9 +62,16 @@ export class TracksPageComponent {
   readonly title = new FormControl('', { nonNullable: true });
   readonly selectedFile = signal<File | undefined>(undefined);
   readonly fileError = signal('');
-  readonly uploading = signal(false);
+  readonly uploadState = signal<UploadState>('idle');
   readonly uploadError = signal('');
   readonly uploadSuccess = signal('');
+
+  // TP3 Mission 6 : pourcentage transmis, ou null tant que le navigateur n'a
+  // pas encore annoncé la taille totale de la requête.
+  readonly uploadProgress = signal<number | null>(null);
+
+  /** État dérivé : sert à désactiver les contrôles pendant l'envoi. */
+  readonly uploading = computed(() => this.uploadState() === 'uploading');
 
   // TP3 Mission 5 : suppression. `confirmingDeleteId` retient la card qui
   // demande confirmation, `deletingId` celle dont la requête est en cours —
@@ -130,6 +153,10 @@ export class TracksPageComponent {
     const file = (event.target as HTMLInputElement).files?.[0];
     console.debug('[TracksPage] Fichier sélectionné', file?.name);
 
+    // Choisir un nouveau fichier remet le bloc d'envoi à zéro : le résultat de
+    // l'envoi précédent ne doit pas rester affiché.
+    this.uploadState.set('idle');
+    this.uploadProgress.set(null);
     this.uploadError.set('');
     this.uploadSuccess.set('');
 
@@ -155,28 +182,47 @@ export class TracksPageComponent {
 
     const submittedTitle = this.title.value || file.name;
 
-    this.uploading.set(true);
+    this.uploadState.set('uploading');
+    this.uploadProgress.set(null);
     this.uploadError.set('');
     this.uploadSuccess.set('');
     // Le champ titre appartient au formulaire réactif : on le désactive par son
     // API pour qu'il ne soit pas modifié pendant que l'envoi est en cours.
     this.title.disable();
 
+    // TP3 Mission 6 : cet Observable émet PLUSIEURS valeurs (une par événement
+    // HTTP), contrairement à un appel classique qui n'en émet qu'une. Il faut
+    // donc trier les événements par leur `type` au lieu de traiter directement
+    // la valeur reçue comme la réponse du serveur.
     this.service.upload(file, submittedTitle).subscribe({
-      next: (track) => {
-        console.debug('[TracksPage] Piste envoyée', track.id);
-        this.uploading.set(false);
-        this.title.enable();
-        this.uploadSuccess.set(`« ${track.title} » a été ajouté à votre bibliothèque.`);
-        this.resetUploadForm();
-        // Les pistes sont triées par date décroissante : la nouvelle est en
-        // première page, on y revient donc pour la rendre visible.
-        this.page.set(1);
-        this.load();
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          // `total` est absent si la taille de la requête est inconnue : dans ce
+          // cas on n'affiche pas de pourcentage mais une barre indéterminée.
+          this.uploadProgress.set(
+            event.total ? Math.round((100 * event.loaded) / event.total) : null,
+          );
+          return;
+        }
+
+        if (event.type === HttpEventType.Response) {
+          const track = event.body!;
+          console.debug('[TracksPage] Piste envoyée', track.id);
+          this.uploadState.set('success');
+          this.uploadProgress.set(100);
+          this.title.enable();
+          this.uploadSuccess.set(`« ${track.title} » a été ajouté à votre bibliothèque.`);
+          this.resetUploadForm();
+          // Les pistes sont triées par date décroissante : la nouvelle est en
+          // première page, on y revient donc pour la rendre visible.
+          this.page.set(1);
+          this.load();
+        }
       },
       error: (error: HttpErrorResponse) => {
         console.error('[TracksPage] Envoi impossible', error);
-        this.uploading.set(false);
+        this.uploadState.set('error');
+        this.uploadProgress.set(null);
         this.title.enable();
         // Le message vient du backend (Format audio non accepté, Fichier audio
         // requis, File too large…) quand il en fournit un.

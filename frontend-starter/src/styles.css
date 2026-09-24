@@ -45,3 +45,15 @@ audio { width: 100%; }
   nav { margin-top: 1rem; }
   .grid .card { margin-bottom: 1rem; }
 }
+
+/* Le thème Material préfabriqué est bleu : on réaligne ses jetons de couleur
+   principaux sur le vert de l'application pour garder une charte cohérente. */
+:root {
+  --mat-sys-primary: #1d755e;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-surface: #ffffff;
+  --mat-sys-on-surface: #17312a;
+  --mat-sys-on-surface-variant: #61756f;
+}
+.mat-mdc-paginator { background: transparent; }
+.pager-state { margin: 0.2rem 0 1rem; color: #61756f; font-size: 0.85rem; }

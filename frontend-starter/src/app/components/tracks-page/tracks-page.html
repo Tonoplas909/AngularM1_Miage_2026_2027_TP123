@@ -18,25 +18,44 @@
         <h2>Mes pistes</h2>
         <button type="button" (click)="load()">Actualiser</button>
       </div>
+
       @if (loading()) {
-        <p>Chargement…</p>
+        <p role="status">Chargement…</p>
       }
+
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+
       @for (track of tracks(); track track.id) {
         <div class="track">
           <div>
             <b>{{ track.title }}</b>
-            <small>{{ track.originalName }} · {{ track.size }} Ko</small>
+            <small>{{ track.originalName }} · {{ track.size }} octets</small>
           </div>
           <button type="button" (click)="play(track)" [attr.aria-label]="'Lire ' + track.title">▶</button>
         </div>
       } @empty {
-        <p>Aucune piste.</p>
+        @if (!loading() && !error()) {
+          <p>Aucune piste.</p>
+        }
       }
-      <div class="pager">
-        <button type="button" (click)="go(page() - 1)" [disabled]="page() === 1">Préc.</button>
-        <span>Page {{ page() }} / {{ pages() }}</span>
-        <button type="button" (click)="go(page() + 1)" [disabled]="page() === pages()">Suiv.</button>
-      </div>
+
+      <!-- Paginator Angular Material : il fournit lui-même les boutons
+           « page précédente » / « page suivante », désactivés aux bornes,
+           ainsi que le sélecteur de taille de page. Chaque interaction
+           déclenche onPageChange() donc une nouvelle requête HTTP. -->
+      <mat-paginator
+        [length]="total()"
+        [pageSize]="limit()"
+        [pageIndex]="page() - 1"
+        [pageSizeOptions]="pageSizeOptions"
+        [disabled]="loading()"
+        (page)="onPageChange($event)"
+        aria-label="Pagination de la bibliothèque"
+      />
+      <p class="pager-state">Page {{ page() }} / {{ pages() }} — {{ total() }} piste(s)</p>
+
       @if (audioUrl()) {
         <audio [src]="audioUrl()" controls autoplay></audio>
       }

@@ -6,7 +6,7 @@ dans un dossier `captures/`) puis liées avec
 `![légende](captures/nom-du-fichier.png)`.
 
 **État de vérification au moment de la rédaction** : `npm run build` passe
-(bundle généré en ~6 s) et les 27 tests frontend du TP3 passent. En revanche le
+(bundle généré en ~13 s) et les 32 tests frontend du TP3 passent. En revanche le
 cluster MongoDB Atlas du fichier `backend/.env` n'était **pas joignable** depuis
 la machine (`querySrv ECONNREFUSED _mongodb._tcp.cluster0.xb7iesh.mongodb.net`,
 cluster probablement en pause) : les captures Network du checkpoint restent donc
@@ -20,7 +20,7 @@ cluster probablement en pause) : les captures Network du checkpoint restent donc
 ### Le flux demandé
 
 ```text
-TracksPageComponent.load()          (tracks-page.ts:113)
+TracksPageComponent.load()          (tracks-page.ts:132)
   → TrackService.list(page, limit)  (track.service.ts:11)
     → HttpClient.get('/api/tracks', { params: { page, limit } })
       → GET /api/tracks?page=...&limit=...
@@ -48,7 +48,7 @@ expect(request.request.urlWithParams).toBe('/api/tracks?page=3&limit=10');
 
 ### L'état représenté avec des Signals
 
-Tous dans `tracks-page.ts:52-58` :
+Tous dans `tracks-page.ts:60-66` :
 
 | Signal | Rôle | Source |
 |---|---|---|
@@ -61,23 +61,27 @@ Tous dans `tracks-page.ts:52-58` :
 | `error` | message d'erreur éventuel | `error.error?.message` sinon message par défaut |
 
 Un point volontaire : après chaque réponse, `page` et `limit` sont **réécrits
-avec les valeurs renvoyées par le serveur** (`tracks-page.ts:123-126`). Le backend
+avec les valeurs renvoyées par le serveur** (`tracks-page.ts:142-145`). Le backend
 borne en effet ces paramètres (`app.js:273-274` : `page >= 1`,
 `1 <= limit <= 20`). Si l'interface demandait `limit=500`, le serveur en
 appliquerait 20 ; sans ce réalignement, l'interface afficherait un état faux.
 
 ### Affichage : `@for`, `@empty`, `@if`
 
-- `@for (track of tracks(); track track.id)` — `tracks-page.html:92`
-- `@empty` — affiche « Aucune piste. Importez votre premier morceau. »
-  (`tracks-page.html:146-148`), et seulement si on n'est ni en chargement ni en
-  erreur : sinon trois messages contradictoires s'afficheraient en même temps.
-- `@if (loading())` — « Chargement… » avec `role="status"` (`tracks-page.html:84`)
-- `@if (error())` — message d'erreur avec `role="alert"` (`tracks-page.html:88`)
+- `@for (track of tracks(); track track.id)` — `tracks-page.html:141`
+- `@empty` — affiche « Aucune piste pour le moment. » et invite à importer
+  (`tracks-page.html:231-237`), et seulement si on n'est pas en erreur : sinon
+  deux messages contradictoires s'afficheraient en même temps.
+- `@if (loading())` — affiche quatre cards « squelettes » animées à la place de
+  la liste (`tracks-page.html:130-138`), ce qui évite un saut de mise en page
+  quand les vraies cards arrivent. Le message textuel destiné aux lecteurs
+  d'écran est porté par un `role="status"` en `.sr-only` : visuellement inutile
+  puisque les squelettes sont déjà parlants, mais indispensable à l'oral.
+- `@if (error())` — message d'erreur avec `role="alert"` (`tracks-page.html:127`)
 
 ### Boutons « Précédent » / « Suivant » désactivés aux bornes
 
-Ils sont fournis par le **Paginator Angular Material** (`tracks-page.html:157`),
+Ils sont fournis par le **Paginator Angular Material** (`tracks-page.html:246`),
 qui est exactement le composant demandé dans la partie AVANCÉ du sujet :
 
 ```html
@@ -102,7 +106,7 @@ Un piège à connaître : **le paginator compte les pages à partir de 0**
 faite explicitement dans les deux sens :
 
 ```ts
-// tracks-page.ts:142 — du paginator vers l'API
+// tracks-page.ts:161 — du paginator vers l'API
 onPageChange(event: PageEvent): void {
   this.page.set(event.pageIndex + 1);
   this.limit.set(event.pageSize);
@@ -114,8 +118,9 @@ onPageChange(event: PageEvent): void {
 [pageIndex]="page() - 1"
 ```
 
-Une ligne de texte double l'information pour l'utilisateur :
-`Page {{ page() }} / {{ pages() }} — {{ total() }} piste(s)`.
+Le bloc de statistiques de l'en-tête de page double l'information sous forme
+lisible : « Pistes : 12 » et « Page : 2/3 » (`tracks-page.html:9-18`). Le
+nombre de pages vient de `pages()`, donc du serveur.
 
 ### Une requête HTTP par changement de page
 
@@ -146,15 +151,15 @@ répond au contrat existant.
 
 | Étape | Fichier et méthode |
 |---|---|
-| Choix du fichier | `tracks-page.html:23` (`<input type="file" (change)="choose($event)">`) puis `tracks-page.ts:152` (`choose()`) |
+| Choix du fichier | `tracks-page.html:41` (`<input type="file" (change)="choose($event)">`) puis `choose()` (`tracks-page.ts:168`), qui délègue à `selectFile()` (`tracks-page.ts:196`) — point d'entrée commun avec le glisser-déposer |
 | Construction du `FormData` | `track.service.ts:31-33` (`new FormData()`, `append('audio', file)`, `append('title', title)`) |
 | Appel HTTP d'upload | `track.service.ts:34` (`http.post<Track>('/api/tracks', body, …)`) |
 | Réception côté serveur | `app.js:337` (`upload.single("audio")`) → `req.file`, `req.body.title` |
 | Récupération du `Blob` | `track.service.ts:40-43` (`http.get(..., { responseType: 'blob' })`) |
-| Création de l'`ObjectURL` | `tracks-page.ts:246` (`URL.createObjectURL(blob)`) |
-| Affectation au lecteur | `tracks-page.html:178` (`<audio [src]="audioUrl()">`) |
-| Révocation de l'ancienne URL | `tracks-page.ts:245` (`releaseAudioUrl()` avant chaque nouvelle création) et `tracks-page.ts:356-361` |
-| Révocation de la **dernière** URL | `tracks-page.ts:97` (`destroyRef.onDestroy(() => this.releaseAudioUrl())`) |
+| Création de l'`ObjectURL` | `tracks-page.ts:289` (`URL.createObjectURL(blob)`) |
+| Affectation au lecteur | `tracks-page.html:354` (`<audio [src]="audioUrl()">`) |
+| Révocation de l'ancienne URL | `tracks-page.ts:288` (`releaseAudioUrl()` avant chaque nouvelle création) et `tracks-page.ts:491-496` |
+| Révocation de la **dernière** URL | `tracks-page.ts:116` (`destroyRef.onDestroy(() => this.releaseAudioUrl())`) |
 | Ajout du JWT | `auth.interceptor.ts:6-15` |
 
 ### Les deux flux
@@ -249,8 +254,8 @@ côté Multer.
 `frontend-starter/src/app/shared/audio-constraints.ts`. Il recopie les règles du
 backend (`MAX_AUDIO_SIZE = 25 * 1024 * 1024`, la même liste de types MIME) et
 expose `validateAudioFile(file)` qui renvoie un message lisible ou `null`.
-Appelé à la sélection (`tracks-page.ts:163`) **et** juste avant l'envoi
-(`tracks-page.ts:177`). Un fichier refusé n'est pas conservé : le bouton
+Appelé à la sélection (`tracks-page.ts:205`, dans `selectFile()`) **et** juste
+avant l'envoi (`tracks-page.ts:220`). Un fichier refusé n'est pas conservé : le bouton
 « Envoyer » reste inactif.
 
 Détail utile : certains navigateurs ne renseignent pas `File.type`. Dans ce cas
@@ -272,9 +277,9 @@ contrôle client est une courtoisie, tout contrôle serveur est une garantie.
 
 | Exigence | Réalisation |
 |---|---|
-| État de chargement | `uploadState()` (`'idle' \| 'uploading' \| 'success' \| 'error'`) + barre de progression, `tracks-page.html:49-73` |
-| Bouton désactivé, pas de double soumission | `[disabled]="!selectedFile() \|\| uploading()"` (`tracks-page.html:42`) **et** garde `if (!file \|\| this.uploading()) return;` dans le code (`tracks-page.ts:175`) |
-| Erreurs du serveur affichées | `uploadError()` alimenté par `error.error?.message` (`tracks-page.ts:229`) |
+| État de chargement | `uploadState()` (`'idle' \| 'uploading' \| 'success' \| 'error'`) + barre de progression, `tracks-page.html:90-114` |
+| Bouton désactivé, pas de double soumission | `[disabled]="!selectedFile() \|\| uploading()"` (`tracks-page.html:83`) **et** garde `if (!file \|\| this.uploading()) return;` dans le code (`tracks-page.ts:218`) |
+| Erreurs du serveur affichées | `uploadError()` alimenté par `error.error?.message` (`tracks-page.ts:272`) |
 | Message de succès | `uploadSuccess()` : « « <titre> » a été ajouté à votre bibliothèque. » |
 | Formulaire vidé | `resetUploadForm()` : `title.setValue('')`, `selectedFile.set(undefined)`, **et** remise à zéro de `input.value` du DOM (un `<input type="file">` ne se vide pas autrement) |
 | Retour en première page | `page.set(1)` puis `load()` (les pistes sont triées par `createdAt: -1`, `app.js:287` : la nouvelle est donc en page 1) |
@@ -284,7 +289,7 @@ Le champ « Titre » est désactivé par l'API du formulaire réactif
 le template : avec les Reactive Forms, c'est le `FormControl` qui possède l'état
 du contrôle, et mélanger les deux produit un avertissement Angular.
 
-**3. Cards responsives et accessibles** (`tracks-page.html:91-149`,
+**3. Cards responsives et accessibles** (`tracks-page.html:140-243`,
 `tracks-page.css`)
 
 Chaque card affiche le titre, le nom d'origine, le format (`MP3`, `WAV`, `OGG`,
@@ -297,25 +302,39 @@ Choix d'accessibilité :
 - `<h3>` pour le titre de chaque card, sous le `<h2>` « Mes pistes » ;
 - `aria-label` explicite sur chaque bouton (« Lire Blues en La ») : « ▶ » seul
   ne dit rien à l'oral ;
-- piste en cours signalée par `aria-current` **et** par du texte (« Lecture en
-  cours : … »), pas seulement par la couleur ;
+- piste en cours signalée par `aria-current` **et** par un badge textuel
+  (« En lecture » / « En pause »), pas seulement par la couleur de la bordure ;
 - `aria-live="polite"` sur les zones de statut, `role="alert"` sur les erreurs ;
-- `:focus-visible` avec un anneau de 3 px pour la navigation clavier ;
-- grille `repeat(auto-fill, minmax(260px, 1fr))` au-delà de 560 px, une seule
-  colonne en dessous ; `overflow-wrap: anywhere` pour les noms de fichiers longs.
+- `:focus-visible` avec un anneau de 2 px sur tous les éléments interactifs ;
+  la zone de dépôt le reçoit via `:focus-within`, puisque son `<input file>` est
+  masqué visuellement (`.sr-only`) tout en restant focalisable ;
+- grille `repeat(auto-fill, minmax(250px, 1fr))` au-delà de 620 px, une seule
+  colonne en dessous ; `overflow-wrap: anywhere` pour les noms de fichiers longs ;
+- animations neutralisées sous `prefers-reduced-motion: reduce`.
 
 **4. Lecture complétée**
 
-- morceau en cours affiché : Signal `currentTrack` + bloc « Lecture en cours »
-  (`tracks-page.html:173-177`) ;
+- morceau en cours affiché : Signal `currentTrack`, lu par la barre de lecture
+  fixée en bas d'écran (`tracks-page.html:266-292`) ;
 - erreur audio compréhensible : deux sources distinctes — l'échec HTTP
-  (`tracks-page.ts:249-256`, message dédié pour un `404` : « Cette piste
+  (`tracks-page.ts:292-303`, message dédié pour un `404` : « Cette piste
   n'existe plus ou ne vous appartient pas. ») et le refus du lecteur lui-même
-  (`(error)="onAudioError()"` sur la balise `<audio>`, `tracks-page.ts:342`) ;
+  (`(error)="onAudioError()"` sur la balise `<audio>`, `tracks-page.ts:459`) ;
 - `loadingAudioId` désactive les boutons ▶ pendant le téléchargement, pour
   éviter deux téléchargements simultanés ;
 - révocation de l'`ObjectURL` finale à la destruction du composant
-  (`tracks-page.ts:97`).
+  (`tracks-page.ts:116`).
+
+**Barre de lecture fixée en bas d'écran.** L'élément `<audio>` ne porte plus
+l'attribut `controls` : les commandes (lecture/pause, barre de progression,
+temps écoulé et total, volume) sont dessinées par l'application et pilotent le
+même élément. Ce qui compte pour la mission ne change pas — c'est toujours un
+`<audio>` dont le `src` reçoit l'`ObjectURL` d'un `Blob` téléchargé de façon
+authentifiée. Les Signals `isPlaying`, `currentTime`, `duration` et `volume`
+sont alimentés par les **événements** de l'élément (`loadedmetadata`,
+`timeupdate`, `play`, `pause`, `ended`) : l'élément reste la source de vérité du
+son, l'interface ne fait que le refléter. Voir la section « Refonte de
+l'interface » en fin de document.
 
 ### Téléchargement complet d'un `Blob`, buffering, streaming
 
@@ -371,7 +390,7 @@ reçoit-il généralement le fichier ?**
 À la toute fin : quand la réponse est **complètement** téléchargée. L'Observable
 retourné par `TrackService.audio()` (`track.service.ts:40`) n'émet qu'une seule
 valeur, et il l'émet une fois le corps entier reçu et converti en `Blob`. Le
-callback `next` de `play()` (`tracks-page.ts:240`) ne s'exécute donc pas avant
+callback `next` de `play()` (`tracks-page.ts:283`) ne s'exécute donc pas avant
 le dernier octet. Rien n'est jouable pendant le transfert. Si l'on voulait
 suivre l'avancement, il faudrait ici aussi passer par `observe: 'events'` et
 `reportProgress: true` — ce qui donnerait des événements `DownloadProgress`,
@@ -382,21 +401,21 @@ chargés en mémoire dès l'affichage de la liste ?**
 
 Non. Justification à partir du code :
 
-1. l'affichage de la liste appelle `TrackService.list()` (`tracks-page.ts:117`),
+1. l'affichage de la liste appelle `TrackService.list()` (`tracks-page.ts:136`),
    qui interroge `GET /api/tracks` ; cette route renvoie **uniquement des
    métadonnées JSON** (`app.js:295-299` : `id`, `title`, `originalName`,
    `mimeType`, `size`, `createdAt`) — aucun octet audio ;
 2. la seule requête qui rapporte de l'audio est `TrackService.audio(id)`
    (`track.service.ts:40`), et le seul appelant est `play(track)`
-   (`tracks-page.ts:235`), déclenché par un clic sur ▶ ;
+   (`tracks-page.ts:278`), déclenché par un clic sur ▶ ;
 3. le template ne contient **qu'un seul** élément `<audio>`, rendu
-   conditionnellement (`@if (audioUrl())`, `tracks-page.html:173`) et lié à
+   conditionnellement (`@if (audioUrl())`, `tracks-page.html:266`) et lié à
    l'unique Signal `audioUrl`. Il n'y a pas d'élément `<audio>` par card.
 
 Et avec la pagination, la liste n'affiche de toute façon que 5 à 20 pistes à la
 fois. Au maximum **un** fichier audio est en mémoire à un instant donné, celui
 qu'on écoute — puisque l'`ObjectURL` précédente est révoquée avant d'en créer
-une nouvelle (`tracks-page.ts:245`).
+une nouvelle (`tracks-page.ts:288`).
 
 **Quelle différence y aurait-il avec 100 éléments `<audio>` utilisant
 directement une URL HTTP ?**
@@ -434,9 +453,9 @@ l'onglet ». Sans révocation, écouter 30 morceaux de 8 Mo laisserait ~240 Mo d
 
 D'où les deux endroits où `revokeObjectURL` est appelé :
 
-- `tracks-page.ts:245`, avant chaque nouvelle création — l'URL précédente ne
+- `tracks-page.ts:288`, avant chaque nouvelle création — l'URL précédente ne
   sert plus dès qu'on change de morceau ;
-- `tracks-page.ts:97`, via `destroyRef.onDestroy()` — la **dernière** URL, que
+- `tracks-page.ts:116`, via `destroyRef.onDestroy()` — la **dernière** URL, que
   plus aucun `play()` ne viendra remplacer, est libérée quand on quitte la page.
 
 Le second cas est celui qu'on oublie, et il est couvert par un test
@@ -503,3 +522,110 @@ d'écran recadrées.
 
 Voir `RAPPORT_IA_MODELE.md` pour les prompts, les plans proposés par l'agent et
 les fichiers modifiés.
+
+---
+
+## Refonte de l'interface
+
+Travail mené après les missions, à la demande du binôme : moderniser la page et
+rendre le lecteur audio visible en permanence. Aucune route, aucun contrat HTTP
+et aucun comportement métier ne changent — les 32 tests frontend et les 11 tests
+backend passent avant comme après.
+
+### Parti pris : un thème sombre
+
+L'application est un lecteur audio doté d'une barre de lecture fixée en bas
+d'écran : un fond sombre garde l'attention sur le contenu et les commandes, et
+c'est la convention des lecteurs du marché.
+
+Toutes les couleurs passent par des variables CSS déclarées dans `styles.css`
+(`--bg`, `--surface`, `--border`, `--text`, `--accent`…). Le vert de la charte
+d'origine (`#1d755e`) est conservé comme couleur d'accent mais remonté en
+luminosité (`#3ddc97`) : sur fond sombre, le vert d'origine n'aurait pas eu un
+contraste suffisant.
+
+**Point technique à connaître** : le thème Angular Material utilisé
+(`azure-blue.css`) est un thème **clair**, et il ne contient aucune règle
+`prefers-color-scheme`. Il fonctionne entièrement par jetons `--mat-sys-*`, que
+`styles.css` réécrit donc pour que le Paginator, la barre de progression et le
+SnackBar suivent la même charte. Les jetons concernés ont été relevés dans les
+bundles des composants réellement utilisés :
+
+| Composant | Jetons lus |
+|---|---|
+| SnackBar | `inverse-surface`, `inverse-on-surface`, `inverse-primary` |
+| Paginator (et son `mat-select`) | `surface`, `on-surface`, `on-surface-variant`, `surface-container`, `primary` |
+| Progress bar | `primary`, `surface-variant` |
+
+Le SnackBar reste volontairement **clair sur fond sombre** : c'est la convention
+Material 3 (surface « inversée »), et cela le rend immédiatement repérable.
+
+`color-scheme: dark` est déclaré sur `:root` pour que les éléments natifs que le
+CSS ne contrôle pas — barres de défilement, curseurs `input[type=range]` — soient
+rendus dans leur variante sombre par le navigateur.
+
+### La barre de lecture
+
+Fixée en bas de la fenêtre (`position: fixed; inset: auto 0 0 0`), elle est
+**toujours affichée**, y compris quand rien ne joue : dans ce cas elle indique
+« Aucune lecture en cours » et ses commandes sont désactivées, avec une opacité
+réduite. L'utilisateur sait ainsi toujours où trouver les commandes.
+
+Deux détails qui ne se voient pas mais comptent :
+
+1. **L'espace est réservé en bas de page.** Un élément `position: fixed` sort du
+   flux : sans précaution, la dernière card passerait sous la barre. La hauteur
+   est donc déclarée une seule fois en variable (`--player-height`) et le
+   composant réserve cet espace par `padding-bottom` sur `:host`. La variable est
+   redéfinie à 132 px sous 720 px de large, où la barre empile ses trois blocs.
+2. **L'élément `<audio>` n'est rendu qu'une fois une URL disponible**
+   (`@if (audioUrl())`). Un `src` vide serait résolu par le navigateur comme
+   l'URL de la page elle-même, ce qui déclencherait un événement `error` et
+   afficherait un message d'erreur audio alors que rien ne s'est passé.
+
+Les commandes maison (lecture/pause, progression, temps, volume) pilotent
+l'élément `<audio>` sans le remplacer. Précaution ajoutée dans `requestPlay()` :
+`element.play()` renvoie une Promise **ou** `undefined` selon l'implémentation,
+et sa Promise peut être rejetée (politique de lecture automatique du navigateur).
+Le retour est donc testé avant d'être enchaîné, et le rejet est traité.
+
+### Autres changements visibles
+
+| Élément | Avant | Après |
+|---|---|---|
+| En-tête | bandeau statique | barre collante (`sticky`) avec flou d'arrière-plan et onglet courant marqué par `routerLinkActive` |
+| Import | `<input type="file">` nu | zone de dépôt avec **glisser-déposer**, l'`<input>` restant présent et focalisable (`.sr-only` + `<label for>`) |
+| Chargement | texte « Chargement… » | quatre cards « squelettes » animées, plus un `role="status"` pour les lecteurs d'écran |
+| Cards | lignes de texte | cards en grille, bouton de lecture rond, étiquettes format / taille / date, badge « En lecture » |
+| Lecteur | `<audio controls>` sous la liste | barre fixe en bas d'écran avec commandes maison |
+| Pagination | compteur textuel sous la liste | bloc de statistiques dans l'en-tête de page |
+| Login / inscription / profil | formulaires bruts | mêmes cards, libellés reliés par `for`/`id`, attributs `autocomplete`, avatar à initiale sur le profil |
+
+Le **glisser-déposer** passe par le même point d'entrée que le sélecteur natif
+(`selectFile()`), donc par la même validation `validateAudioFile()`. Il n'y a pas
+deux chemins de validation à maintenir, et le test de la suite frontend le
+vérifie explicitement pour les deux origines.
+
+### Accessibilité
+
+La refonte n'échange pas l'accessibilité contre l'esthétique :
+
+- aucune information portée par la seule couleur — la piste en cours a une
+  bordure **et** un badge textuel, l'upload a un pourcentage **et** une barre ;
+- anneau de focus visible sur tout élément interactif, y compris sur la zone de
+  dépôt via `:focus-within` ;
+- libellés `aria-label` sur les commandes icôniques du lecteur, dont le texte
+  change avec l'état (« Mettre en pause » / « Reprendre la lecture ») ;
+- icônes en SVG inline avec `aria-hidden="true"` : décoratives, jamais annoncées ;
+- `prefers-reduced-motion: reduce` neutralise les animations (squelettes,
+  égaliseur, transitions).
+
+### Fichiers touchés par la refonte
+
+- `frontend-starter/src/styles.css` (réécrit : variables de thème, jetons Material)
+- `frontend-starter/src/app/components/app/app.html` / `.css` / `.ts` (`RouterLinkActive`)
+- `frontend-starter/src/app/components/tracks-page/tracks-page.html` / `.css` / `.ts`
+- `frontend-starter/src/app/components/login-page/login-page.html` / `.css`
+- `frontend-starter/src/app/components/register-page/register-page.html` / `.css`
+- `frontend-starter/src/app/components/profile-page/profile-page.html` / `.css`
+- `frontend-starter/src/app/components/tracks-page/tracks-page.spec.ts` (5 tests ajoutés)

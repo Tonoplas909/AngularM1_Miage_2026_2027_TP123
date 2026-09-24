@@ -1,114 +1,442 @@
-:host { display: block; }
+/* La barre de lecture étant fixée en bas de l'écran, on réserve sa hauteur en
+   bas de la page : sans cela, la dernière card passerait dessous. */
+:host {
+  display: block;
+  padding-bottom: calc(var(--player-height) + 2rem);
+}
+
+/* ============================ En-tête de page ============================ */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-head h1 { margin: 0.35rem 0 0.3rem; }
+
+.stats {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.stats div {
+  min-width: 96px;
+  padding: 0.7rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.stats dt {
+  color: var(--text-faint);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stats dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.stats dd span { color: var(--text-faint); font-size: 0.95rem; font-weight: 500; }
+
+/* ============================== Disposition ============================== */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  align-items: start;
+  gap: 1.25rem;
+}
+
+/* Le panneau d'import suit le défilement : on peut déposer un fichier sans
+   remonter en haut de la page. */
+.upload { position: sticky; top: 5.5rem; }
+
+.upload h2, .library-head h2 { margin-bottom: 1rem; }
+
+/* ============================ Zone de dépôt ============================= */
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1.6rem 1rem;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1.5px dashed var(--border-hover);
+  border-radius: var(--radius);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+/* Retour visuel pendant le survol d'un fichier glissé. */
+.dropzone.is-over {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.dropzone.is-disabled { opacity: 0.5; pointer-events: none; }
+
+.dropzone-icon { color: var(--accent); }
+
+.dropzone-label {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.dropzone-label b { color: var(--accent); font-weight: 600; }
+.dropzone-label span { color: var(--text-muted); font-size: 0.82rem; font-weight: 400; }
+
+/* L'anneau de focus doit apparaître sur la zone, puisque l'input est masqué. */
+.dropzone:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dropzone-hint { color: var(--text-faint); font-size: 0.76rem; }
+
+/* Fichier retenu, prêt à être envoyé. */
+.picked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+}
+
+.picked-name { overflow: hidden; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.picked-size { flex: none; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.submit { width: 100%; }
+
+.upload-status { min-height: 1.4rem; margin-top: 0.85rem; }
+.upload-progress { margin-bottom: 0.45rem; color: var(--text-muted); font-size: 0.83rem; font-variant-numeric: tabular-nums; }
+
+/* ============================ Bibliothèque ============================== */
+.library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
 
 /* Liste sémantique : une <ul role="list"> de cards plutôt qu'une suite de
    <div>, pour qu'un lecteur d'écran annonce « liste de N éléments ». */
 .tracks {
-  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 0.8rem;
 }
 
-/* Les cards s'adaptent à la largeur : auto-fill descend à une colonne sur
-   mobile sans media query dédiée. */
-@media (min-width: 560px) {
-  .tracks { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+/* auto-fill descend à une seule colonne sur mobile sans media query dédiée. */
+@media (min-width: 620px) {
+  .tracks { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
 }
 
 .track-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 0.8rem;
+  gap: 0.75rem;
   height: 100%;
   padding: 1rem;
-  background: #f7faf9;
-  border: 1px solid #e1ebe7;
-  border-left: 4px solid #cfded9;
-  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
 
-/* La piste en cours est signalée par la couleur ET par le texte
-   « Lecture en cours », pour ne pas reposer uniquement sur la couleur. */
+.track-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+/* La piste en cours est signalée par la bordure ET par le badge « En lecture »,
+   pour ne pas reposer uniquement sur la couleur. */
 .track-card.is-playing {
-  background: #eef6f3;
-  border-left-color: #1d755e;
+  background: linear-gradient(160deg, var(--accent-soft), transparent 60%), var(--surface-2);
+  border-color: var(--accent);
 }
 
-.track-card h3 {
-  margin: 0 0 0.3rem;
-  font-size: 1rem;
-  overflow-wrap: anywhere;
+/* Squelette affiché pendant le chargement. */
+.track-card.is-skeleton {
+  min-height: 132px;
+  background: linear-gradient(100deg, var(--surface-2) 30%, var(--surface-hover) 50%, var(--surface-2) 70%);
+  background-size: 250% 100%;
+  animation: shimmer 1.3s infinite linear;
 }
 
-.track-meta {
-  margin: 0 0 0.6rem;
-  color: #61756f;
-  font-size: 0.82rem;
-  overflow-wrap: anywhere;
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.track-top { display: flex; align-items: flex-start; gap: 0.7rem; }
+
+/* Bouton de lecture rond, l'action principale de la card. */
+.play {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.track-id { min-width: 0; }
+
+.track-id h3 { overflow-wrap: anywhere; }
+
+.track-file {
+  margin-top: 0.15rem;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .track-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.3rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .track-tags li {
-  padding: 0.15rem 0.5rem;
-  background: #e3ede9;
-  border-radius: 999px;
-  color: #3c5a51;
-  font-size: 0.72rem;
+  padding: 0.16rem 0.55rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 0.71rem;
+  font-weight: 500;
 }
 
-.empty { color: #61756f; }
-
-.hint { margin: 0.2rem 0; color: #61756f; font-size: 0.8rem; }
-.status { margin: 0.5rem 0 0; min-height: 1.2rem; }
-.success { color: #1d755e; font-weight: 600; }
-
-.player {
-  margin-top: 1rem;
-  padding: 0.8rem;
-  background: #eef6f3;
-  border-radius: 12px;
-}
-
-.now-playing { margin: 0 0 0.5rem; font-size: 0.9rem; }
-
-/* Un anneau de focus visible reste indispensable pour la navigation clavier. */
-button:focus-visible, input:focus-visible {
-  outline: 3px solid #1d755e;
-  outline-offset: 2px;
-}
-
-.track-card-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-
-/* La zone de confirmation reprend toute la largeur de la card. */
-.track-card-actions.confirm {
+.track-actions {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  padding-top: 0.5rem;
-  border-top: 1px dashed #cfded9;
+  gap: 0.4rem;
+  margin-top: auto;
 }
 
-.confirm-question {
-  flex: 1 1 100%;
-  color: #8a3b3b;
-  font-size: 0.82rem;
+.track-actions button { padding: 0.45rem 0.8rem; font-size: 0.8rem; }
+
+.track-actions.confirm {
+  justify-content: flex-end;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border-hover);
 }
 
-button.secondary {
-  color: #1d755e;
+.confirm-question { flex: 1 1 100%; color: var(--danger); font-size: 0.8rem; font-weight: 500; }
+
+.badge-playing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: auto;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.empty {
+  display: grid;
+  gap: 0.3rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* Indicateur circulaire pendant le téléchargement du Blob. */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(4, 33, 26, 0.3);
+  border-top-color: var(--accent-ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.audio-error { margin-top: 1rem; }
+
+/* ===================== Barre de lecture fixée en bas ===================== */
+.player {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 30;
+  background: rgba(19, 28, 25, 0.92);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+}
+
+.player-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.85rem 1.25rem;
+}
+
+/* Sans lecture en cours, la barre s'efface visuellement sans disparaître :
+   les commandes restent repérables mais n'attirent pas l'œil. */
+.player.is-idle .player-track,
+.player.is-idle .player-controls { opacity: 0.55; }
+
+.player-track { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+
+.player-art {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--accent);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.player-meta { display: grid; min-width: 0; line-height: 1.3; }
+
+.player-meta b {
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-meta small { color: var(--text-faint); font-size: 0.74rem; }
+
+.player-controls { display: flex; align-items: center; gap: 0.7rem; }
+
+.player-play {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.player-time {
+  flex: none;
+  min-width: 38px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* --- Curseurs de progression et de volume ------------------------------- */
+/* Les pseudo-éléments -webkit- et -moz- ne peuvent pas être regroupés dans une
+   même règle : un sélecteur inconnu invaliderait toute la déclaration. */
+.player input[type="range"] {
+  flex: 1;
+  height: 18px;
+  padding: 0;
   background: transparent;
-  border: 1px solid #b8cbc5;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
 }
 
-button.danger { background: #a33; }
+.player input[type="range"]:disabled { cursor: not-allowed; opacity: 0.5; }
 
-.upload-progress { margin: 0 0 0.4rem; font-size: 0.85rem; }
+.player input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  background: var(--border-hover);
+  border-radius: var(--radius-pill);
+}
+
+.player input[type="range"]::-moz-range-track {
+  height: 5px;
+  background: var(--border-hover);
+  border-radius: var(--radius-pill);
+}
+
+.player input[type="range"]::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+  margin-top: -4px;
+  background: var(--accent);
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+}
+
+.player input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  background: var(--accent);
+  border: 0;
+  border-radius: 50%;
+}
+
+.player-volume { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); }
+.player-volume input[type="range"] { width: 86px; flex: none; }
+
+/* --- Égaliseur animé ---------------------------------------------------- */
+.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+
+.eq i {
+  width: 3px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* L'animation ne tourne qu'en lecture : à la pause, les barres se figent. */
+.eq.is-animating i { animation: bounce 0.9s ease-in-out infinite; }
+.eq.is-animating i:nth-child(2) { animation-delay: 0.15s; }
+.eq.is-animating i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 100% { height: 4px; }
+  50% { height: 11px; }
+}
+
+/* ================================ Mobile ================================ */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .upload { position: static; }
+}
+
+@media (max-width: 720px) {
+  .page-head { align-items: flex-start; }
+  .stats { width: 100%; }
+  .stats div { flex: 1; }
+
+  /* Sur mobile, le volume passe à la trappe et les commandes prennent toute la
+     largeur sous les informations de la piste. */
+  .player-inner {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding: 0.7rem 1rem;
+  }
+  .player-volume { display: none; }
+}

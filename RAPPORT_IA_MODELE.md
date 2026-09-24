@@ -137,7 +137,7 @@ directement à l'assistant, consulter la documentation officielle du fournisseur
 - **Objectif** : écrire au moins trois tests frontend parmi les sept proposés, vérifiant URL, méthodes, paramètres, headers et résultats simulés, sans dépendre d'un backend ni de MongoDB. Extension facultative : ajouter des tests de contrat ou de sécurité au backend.
 - **Prompt principal** : idem Mission 2.
 - **Plan proposé par l'agent** : valider d'abord l'outillage avec **un seul** test avant d'en écrire vingt-sept — décision qui s'est révélée déterminante, car trois obstacles d'environnement ont dû être levés l'un après l'autre (voir ci-dessous). Puis couvrir les sept propositions du sujet plutôt que le minimum de trois, et ajouter côté backend uniquement les cas qui ne nécessitent pas de base de données.
-- **Vérifications réalisées par le binôme** : `npm test` frontend → **27 tests, 5 fichiers, 0 échec**. `npm test` backend → **11 tests, 0 échec**. `npm run build` → succès. Sortie brute reproduite dans `COMPTE_RENDU_TP3.md`. [À COMPLÉTER — relancer les deux suites sur la machine du binôme et coller la sortie]
+- **Vérifications réalisées par le binôme** : `npm test` frontend → **27 tests, 5 fichiers, 0 échec** (32 après la refonte de l'interface). `npm test` backend → **11 tests, 0 échec**. `npm run build` → succès. Sortie brute reproduite dans `COMPTE_RENDU_TP3.md`. [À COMPLÉTER — relancer les deux suites sur la machine du binôme et coller la sortie]
 - **Erreurs ou propositions rejetées** — les trois obstacles d'environnement et le bug de test :
   1. `ng test` refusait de démarrer : `Configuration 'development' for target 'build' … is not set`. Le builder `@angular/build:unit-test` cible par défaut `gpc:build:development`, configuration absente d'`angular.json`. Corrigé par `"buildTarget": "gpc:build"`.
   2. Aucun environnement DOM disponible : le runner Vitest exige `jsdom` ou `happy-dom`. `jsdom` ajouté en `devDependencies`.
@@ -159,7 +159,7 @@ directement à l'assistant, consulter la documentation officielle du fournisseur
   ```
   $ cd frontend-starter && npm test
    Test Files  5 passed (5)
-        Tests  27 passed (27)
+        Tests  27 passed (27)      # 32 après la refonte de l'interface
 
   $ cd backend && npm test
   ℹ tests 11
@@ -170,7 +170,32 @@ directement à l'assistant, consulter la documentation officielle du fournisseur
 
 ---
 
-## Bilan sur l'usage de l'assistant (TP2 et TP3)
+# Hors mission — Refonte de l'interface
+
+- **Objectif** : demande du binôme après les missions — « refais l'interface de l'app, et fais en sorte que le lecteur soit toujours affiché en bas, modernise la page ». Aucune route, aucun contrat HTTP et aucun comportement métier ne devaient changer.
+- **Prompt principal** : « Refais l'interface de l'app, et fais en sorte que le lecteur soit toujours affiché en bas, modernise la page ».
+- **Plan proposé par l'agent** : d'abord vérifier comment le thème Angular Material gère le mode sombre — constat qu'`azure-blue.css` est un thème **clair** sans aucune règle `prefers-color-scheme`, mais entièrement piloté par des jetons `--mat-sys-*`. Relevé des jetons réellement lus par les trois composants utilisés (SnackBar, Paginator, ProgressBar) dans leurs bundles, pour ne réécrire que ceux-là. Puis : système de variables CSS dans `styles.css`, en-tête collant avec `routerLinkActive`, refonte des cards, barre de lecture fixée en bas, et harmonisation des pages login / inscription / profil. Enfin, relance du build **et** des tests pour vérifier qu'aucun comportement n'a bougé.
+- **Vérifications réalisées par le binôme** : `npm run build` → succès. `npm test` → **32 tests, 0 échec** (les 27 tests existants ont continué à passer sans modification, ce qui confirme que la refonte est purement visuelle ; 5 tests ont été ajoutés pour le nouveau lecteur et le glisser-déposer). [À COMPLÉTER — relecture visuelle dans le navigateur : contraste réel du texte, comportement de la barre de lecture au défilement, rendu à 400 px de large, navigation complète au clavier (Tab) sans piège de focus]
+- **Erreurs ou propositions rejetées** :
+  1. Un `<audio [src]="audioUrl()">` rendu en permanence avait été envisagé pour simplifier le code du lecteur. Rejeté : avec un `src` vide, le navigateur résout l'URL comme celle de la page elle-même, déclenche un événement `error`, et l'interface afficherait un message d'erreur audio alors que rien ne s'est passé. L'élément n'est donc rendu qu'une fois une URL disponible.
+  2. Conserver l'attribut `controls` natif sur l'élément `<audio>` : rejeté, car les commandes natives de Chrome sont dessinées en clair et jureraient dans une barre sombre. Des commandes maison pilotent désormais le même élément — le mécanisme `Blob` / `ObjectURL` exigé par le TP2 est inchangé.
+  3. Une barre de lecture **partagée entre toutes les pages** (qui continuerait de jouer en naviguant vers `/profile`) a été envisagée. Écartée : cela imposait de déplacer l'état de lecture dans un service injecté, donc de réécrire les tests existants, pour un gain hors du périmètre demandé. La barre reste dans `TracksPageComponent`.
+  4. `element.play().catch(...)` écrit directement : corrigé en testant le retour (`element.play() as Promise<void> | undefined`), car certaines implémentations — dont celle de l'environnement de test — renvoient `undefined` et la chaîne aurait levé une exception.
+  5. Un littéral `[1, 2, 3, 4]` avait été écrit directement dans le `@for` des squelettes de chargement : remplacé par une propriété constante du composant, car un littéral recrée une collection à chaque détection de changement.
+- **Fichiers effectivement modifiés** :
+  - `frontend-starter/src/styles.css` (réécrit : variables de thème + jetons `--mat-sys-*`)
+  - `frontend-starter/src/app/components/app/app.html`, `.css`, `.ts` (ajout de `RouterLinkActive`)
+  - `frontend-starter/src/app/components/tracks-page/tracks-page.html`, `.css`, `.ts`
+  - `frontend-starter/src/app/components/login-page/login-page.html`, `.css`
+  - `frontend-starter/src/app/components/register-page/register-page.html`, `.css`
+  - `frontend-starter/src/app/components/profile-page/profile-page.html`, `.css`
+  - `frontend-starter/src/app/components/tracks-page/tracks-page.spec.ts` (5 tests ajoutés)
+- **Preuve de fonctionnement** : build réussi ; 32 tests frontend et 11 tests backend verts. Le détail des choix de conception est documenté dans la section « Refonte de l'interface » de `COMPTE_RENDU_TP2.md`. [À COMPLÉTER — captures d'écran de la nouvelle interface : bibliothèque avec une piste en lecture, panneau d'import en cours d'envoi, rendu mobile]
+- **Ce que chaque membre sait maintenant expliquer sans l'agent** : [À COMPLÉTER par chaque membre — ex : pourquoi un élément `position: fixed` oblige à réserver son espace par un `padding-bottom` ; comment un thème Material clair se retourne en sombre en réécrivant ses jetons `--mat-sys-*` ; à quoi sert `color-scheme: dark` ; pourquoi le glisser-déposer doit passer par le même point de validation que le sélecteur de fichiers]
+
+---
+
+# Bilan sur l'usage de l'assistant
 
 Ce qui a bien marché :
 

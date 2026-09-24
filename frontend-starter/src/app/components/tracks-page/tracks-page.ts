@@ -44,7 +44,15 @@ export class TracksPageComponent {
   // il faut remettre à zéro la valeur de l'élément du DOM lui-même.
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
+  // L'élément <audio> de la barre de lecture. C'est lui qui joue réellement le
+  // son ; les commandes affichées ne font que le piloter.
+  private readonly player = viewChild<ElementRef<HTMLAudioElement>>('player');
+
   readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
+
+  // Tableau constant : le déclarer ici plutôt qu'en littéral dans le template
+  // évite de recréer une collection à chaque détection de changement.
+  readonly skeletons = [1, 2, 3, 4];
 
   // Mission 2 : l'état de la pagination est entièrement décrit par des Signals.
   // `page` et `limit` sont les paramètres envoyés au serveur, `total` et `pages`
@@ -84,6 +92,17 @@ export class TracksPageComponent {
   readonly currentTrack = signal<Track | null>(null);
   readonly loadingAudioId = signal<string | null>(null);
   readonly audioError = signal('');
+
+  // État de la barre de lecture fixée en bas d'écran. Ces Signals sont alimentés
+  // par les événements de l'élément <audio> : c'est lui la source de vérité du
+  // son, l'interface ne fait que le refléter.
+  readonly isPlaying = signal(false);
+  readonly currentTime = signal(0);
+  readonly duration = signal(0);
+  readonly volume = signal(1);
+
+  /** Vrai pendant qu'un fichier est survolé au-dessus de la zone de dépôt. */
+  readonly dragging = signal(false);
 
   readonly formatSize = formatSize;
   readonly formatAudioType = formatAudioType;
@@ -145,12 +164,36 @@ export class TracksPageComponent {
     this.load();
   }
 
-  /**
-   * Sélection d'un fichier : les mêmes règles que le backend sont vérifiées
-   * tout de suite, pour prévenir l'utilisateur sans envoyer 25 Mo pour rien.
-   */
+  /** Sélection via le sélecteur de fichiers natif. */
   choose(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    this.selectFile((event.target as HTMLInputElement).files?.[0]);
+  }
+
+  // --- Glisser-déposer : même chemin de validation que le sélecteur natif ---
+
+  onDragOver(event: DragEvent): void {
+    // Sans preventDefault, le navigateur ouvrirait le fichier dans un onglet.
+    event.preventDefault();
+    if (!this.uploading()) this.dragging.set(true);
+  }
+
+  onDragLeave(): void {
+    this.dragging.set(false);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragging.set(false);
+    if (this.uploading()) return;
+    this.selectFile(event.dataTransfer?.files?.[0]);
+  }
+
+  /**
+   * Point d'entrée unique de la sélection d'un fichier, quelle que soit son
+   * origine (clic sur le sélecteur ou glisser-déposer) : les mêmes règles que
+   * le backend sont vérifiées tout de suite.
+   */
+  private selectFile(file: File | undefined): void {
     console.debug('[TracksPage] Fichier sélectionné', file?.name);
 
     // Choisir un nouveau fichier remet le bloc d'envoi à zéro : le résultat de
@@ -245,6 +288,10 @@ export class TracksPageComponent {
         this.releaseAudioUrl();
         this.audioUrl.set(URL.createObjectURL(blob));
         this.currentTrack.set(track);
+        // La position et la durée seront renseignées par l'événement
+        // loadedmetadata de l'élément <audio>.
+        this.currentTime.set(0);
+        this.duration.set(0);
       },
       error: (error: HttpErrorResponse) => {
         console.error('[TracksPage] Lecture impossible', error);
@@ -325,10 +372,14 @@ export class TracksPageComponent {
    */
   private afterDelete(track: Track): void {
     if (this.currentTrack()?.id === track.id) {
-      // La piste en cours de lecture vient de disparaître : on libère son Blob.
+      // La piste en cours de lecture vient de disparaître : on libère son Blob
+      // et la barre de lecture revient à son état vide.
       this.releaseAudioUrl();
       this.audioUrl.set('');
       this.currentTrack.set(null);
+      this.isPlaying.set(false);
+      this.currentTime.set(0);
+      this.duration.set(0);
     }
 
     if (this.tracks().length === 1 && this.page() > 1) {
@@ -338,10 +389,94 @@ export class TracksPageComponent {
     this.load();
   }
 
+  // ================= Barre de lecture fixée en bas d'écran =================
+
+  /** Bascule lecture / pause sur l'élément `<audio>`. */
+  togglePlay(): void {
+    const element = this.player()?.nativeElement;
+    if (!element) return;
+
+    if (element.paused) {
+      this.requestPlay(element);
+    } else {
+      element.pause();
+    }
+  }
+
+  /**
+   * La durée n'est connue qu'une fois les métadonnées lues. C'est aussi le
+   * moment où l'on démarre la lecture : le clic sur ▶ de la card compte comme
+   * geste utilisateur, donc les navigateurs autorisent le démarrage automatique.
+   */
+  onLoadedMetadata(): void {
+    const element = this.player()?.nativeElement;
+    if (!element) return;
+
+    // Un Blob de durée inconnue renvoie Infinity ou NaN : on ne l'affiche pas.
+    this.duration.set(Number.isFinite(element.duration) ? element.duration : 0);
+    element.volume = this.volume();
+    this.requestPlay(element);
+  }
+
+  onTimeUpdate(): void {
+    const element = this.player()?.nativeElement;
+    if (element) this.currentTime.set(element.currentTime);
+  }
+
+  onEnded(): void {
+    this.isPlaying.set(false);
+    this.currentTime.set(0);
+  }
+
+  /** Déplacement dans le morceau depuis la barre de progression. */
+  seek(event: Event): void {
+    const element = this.player()?.nativeElement;
+    const position = Number((event.target as HTMLInputElement).value);
+    if (!element || !Number.isFinite(position)) return;
+
+    element.currentTime = position;
+    this.currentTime.set(position);
+  }
+
+  setVolume(event: Event): void {
+    const level = Number((event.target as HTMLInputElement).value);
+    this.volume.set(level);
+
+    const element = this.player()?.nativeElement;
+    if (element) element.volume = level;
+  }
+
+  /** Formate des secondes en `m:ss` pour l'affichage du temps. */
+  formatTime(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+
+    const whole = Math.floor(seconds);
+    const minutes = Math.floor(whole / 60);
+    return `${minutes}:${String(whole % 60).padStart(2, '0')}`;
+  }
+
   /** Erreur signalée par l'élément `<audio>` lui-même (flux illisible). */
   onAudioError(): void {
     console.error('[TracksPage] Le lecteur audio a rejeté le flux');
+    this.isPlaying.set(false);
     this.audioError.set('Le navigateur ne parvient pas à lire ce fichier audio.');
+  }
+
+  /**
+   * `play()` renvoie une Promise qui peut être rejetée (politique de lecture
+   * automatique du navigateur, flux illisible). Ne pas la traiter laisserait une
+   * erreur non capturée dans la console.
+   *
+   * Le retour est vérifié avant d'être enchaîné : les implémentations anciennes
+   * — et celles des environnements de test — renvoient `undefined`.
+   */
+  private requestPlay(element: HTMLAudioElement): void {
+    const started = element.play() as Promise<void> | undefined;
+
+    void started?.catch((error: unknown) => {
+      console.debug('[TracksPage] Lecture automatique refusée', error);
+      this.isPlaying.set(false);
+    });
   }
 
   private resetUploadForm(): void {

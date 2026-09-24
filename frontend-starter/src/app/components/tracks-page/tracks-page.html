@@ -1,93 +1,142 @@
-<section>
-  <div class="hero">
-    <p class="eyebrow">MA BIBLIOTHÈQUE</p>
+<!-- =========================== En-tête de page =========================== -->
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Ma bibliothèque</p>
     <h1>Backing tracks</h1>
-    <p>Importez, retrouvez et écoutez vos morceaux de travail.</p>
+    <p class="lede">Importez, retrouvez et écoutez vos morceaux de travail.</p>
   </div>
 
-  <div class="grid">
-    <!-- ================= Envoi d'une piste (Mission 3) ================= -->
-    <article class="card">
-      <h2>Importer</h2>
+  <dl class="stats">
+    <div>
+      <dt>Pistes</dt>
+      <dd>{{ total() }}</dd>
+    </div>
+    <div>
+      <dt>Page</dt>
+      <dd>{{ page() }}<span>/{{ pages() }}</span></dd>
+    </div>
+  </dl>
+</header>
 
-      <!-- Le champ est désactivé via l'API du FormControl (title.disable()) et
-           non par un attribut [disabled] : c'est le formulaire réactif qui
-           possède l'état du contrôle, pas le template. -->
-      <label>
-        Titre
-        <input [formControl]="title" />
+<div class="layout">
+  <!-- ========================= Panneau d'import ========================= -->
+  <section class="panel upload" aria-labelledby="upload-title">
+    <h2 id="upload-title">Importer une piste</h2>
+
+    <!-- Zone de dépôt : l'input file est masqué visuellement mais reste dans le
+         DOM et lié au label, donc utilisable au clavier et par un lecteur
+         d'écran. Le glisser-déposer passe par le même chemin de validation. -->
+    <div
+      class="dropzone"
+      [class.is-over]="dragging()"
+      [class.is-disabled]="uploading()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+    >
+      <input
+        #fileInput
+        id="audio-file"
+        class="sr-only"
+        type="file"
+        accept=".mp3,.wav,.ogg,.m4a,audio/*"
+        [disabled]="uploading()"
+        (change)="choose($event)"
+        aria-describedby="upload-constraints"
+      />
+
+      <span class="dropzone-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+          <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+        </svg>
+      </span>
+
+      <label for="audio-file" class="dropzone-label">
+        <b>Choisir un fichier</b>
+        <span>ou le glisser ici</span>
       </label>
 
-      <label>
-        Fichier audio
-        <input
-          #fileInput
-          type="file"
-          accept=".mp3,.wav,.ogg,.m4a,audio/*"
-          [disabled]="uploading()"
-          (change)="choose($event)"
-          aria-describedby="upload-constraints"
-        />
-      </label>
-      <p id="upload-constraints" class="hint">MP3, WAV, OGG ou M4A — 25 Mo maximum.</p>
+      <p id="upload-constraints" class="dropzone-hint">MP3, WAV, OGG ou M4A — 25 Mo maximum</p>
+    </div>
 
-      @if (fileError()) {
-        <p class="error" role="alert">{{ fileError() }}</p>
-      }
+    @if (fileError()) {
+      <p class="error" role="alert">{{ fileError() }}</p>
+    }
 
-      @if (selectedFile(); as file) {
-        <p class="hint">Prêt à envoyer : {{ file.name }} ({{ formatSize(file.size) }})</p>
-      }
+    @if (selectedFile(); as file) {
+      <p class="picked">
+        <span class="picked-name">{{ file.name }}</span>
+        <span class="picked-size">{{ formatSize(file.size) }}</span>
+      </p>
+    }
 
-      <button type="button" (click)="upload()" [disabled]="!selectedFile() || uploading()">
-        {{ uploading() ? 'Envoi en cours…' : 'Envoyer' }}
-      </button>
+    <!-- Le champ est désactivé via l'API du FormControl (title.disable()) et
+         non par un attribut [disabled] : c'est le formulaire réactif qui
+         possède l'état du contrôle, pas le template. -->
+    <label for="track-title">
+      Titre affiché
+      <input id="track-title" [formControl]="title" placeholder="Nom du fichier par défaut" />
+    </label>
 
-      <!-- TP3 Mission 6 : les quatre états de l'envoi, pilotés par uploadState().
-           aria-live : les lecteurs d'écran annoncent ces messages sans que
-           l'utilisateur ait besoin de retrouver la zone au clavier. -->
-      <div class="status" aria-live="polite">
-        @switch (uploadState()) {
-          @case ('uploading') {
-            <p class="upload-progress">
-              @if (uploadProgress() !== null) {
-                Envoi en cours… {{ uploadProgress() }} %
-              } @else {
-                Envoi en cours…
-              }
-            </p>
-            <!-- Barre déterminée dès qu'un pourcentage est connu, indéterminée
-                 sinon (taille totale non annoncée par le navigateur). -->
-            <mat-progress-bar
-              [mode]="uploadProgress() === null ? 'indeterminate' : 'determinate'"
-              [value]="uploadProgress() ?? 0"
-            />
-          }
-          @case ('success') {
-            <p class="success">{{ uploadSuccess() }}</p>
-          }
-          @case ('error') {
-            <p class="error" role="alert">{{ uploadError() }}</p>
-          }
+    <button type="button" class="submit" (click)="upload()" [disabled]="!selectedFile() || uploading()">
+      {{ uploading() ? 'Envoi en cours…' : 'Envoyer la piste' }}
+    </button>
+
+    <!-- TP3 Mission 6 : les quatre états de l'envoi, pilotés par uploadState().
+         aria-live : les lecteurs d'écran annoncent ces messages sans que
+         l'utilisateur ait besoin de retrouver la zone au clavier. -->
+    <div class="upload-status" aria-live="polite">
+      @switch (uploadState()) {
+        @case ('uploading') {
+          <p class="upload-progress">
+            @if (uploadProgress() !== null) {
+              Envoi en cours… {{ uploadProgress() }} %
+            } @else {
+              Envoi en cours…
+            }
+          </p>
+          <!-- Barre déterminée dès qu'un pourcentage est connu, indéterminée
+               sinon (taille totale non annoncée par le navigateur). -->
+          <mat-progress-bar
+            [mode]="uploadProgress() === null ? 'indeterminate' : 'determinate'"
+            [value]="uploadProgress() ?? 0"
+          />
         }
-      </div>
-    </article>
-
-    <!-- ================= Bibliothèque paginée (Mission 2) ================= -->
-    <article class="card">
-      <div class="row">
-        <h2>Mes pistes</h2>
-        <button type="button" (click)="load()" [disabled]="loading()">Actualiser</button>
-      </div>
-
-      @if (loading()) {
-        <p role="status">Chargement…</p>
+        @case ('success') {
+          <p class="success">{{ uploadSuccess() }}</p>
+        }
+        @case ('error') {
+          <p class="error" role="alert">{{ uploadError() }}</p>
+        }
       }
+    </div>
+  </section>
 
-      @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
-      }
+  <!-- ======================= Bibliothèque paginée ======================= -->
+  <section class="panel library" aria-labelledby="library-title">
+    <div class="library-head">
+      <h2 id="library-title">Mes pistes</h2>
+      <button type="button" class="ghost" (click)="load()" [disabled]="loading()">
+        {{ loading() ? 'Chargement…' : 'Actualiser' }}
+      </button>
+    </div>
 
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    @if (loading()) {
+      <!-- Squelettes de chargement : la mise en page ne saute pas quand les
+           vraies cards arrivent. -->
+      <ul class="tracks" role="list" aria-hidden="true">
+        @for (skeleton of skeletons; track skeleton) {
+          <li><div class="track-card is-skeleton"></div></li>
+        }
+      </ul>
+      <p class="sr-only" role="status">Chargement de la bibliothèque…</p>
+    } @else {
       <ul class="tracks" role="list">
         @for (track of tracks(); track track.id) {
           <li>
@@ -96,43 +145,79 @@
               [class.is-playing]="currentTrack()?.id === track.id"
               [attr.aria-current]="currentTrack()?.id === track.id ? 'true' : null"
             >
-              <div class="track-card-body">
-                <h3>{{ track.title }}</h3>
-                <p class="track-meta">{{ track.originalName }}</p>
-                <ul class="track-tags" role="list">
-                  <li>{{ formatAudioType(track.mimeType) }}</li>
-                  <li>{{ formatSize(track.size) }}</li>
-                  <li>Ajouté le {{ formatDate(track.createdAt) }}</li>
-                </ul>
+              <div class="track-top">
+                <button
+                  type="button"
+                  class="play"
+                  (click)="play(track)"
+                  [disabled]="loadingAudioId() !== null"
+                  [attr.aria-label]="'Lire ' + track.title"
+                >
+                  @if (loadingAudioId() === track.id) {
+                    <span class="spinner" aria-hidden="true"></span>
+                  } @else if (currentTrack()?.id === track.id && isPlaying()) {
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                      <rect x="6" y="5" width="4" height="14" rx="1" />
+                      <rect x="14" y="5" width="4" height="14" rx="1" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                      <path d="M8 5.5v13l11-6.5z" />
+                    </svg>
+                  }
+                </button>
+
+                <div class="track-id">
+                  <h3>{{ track.title }}</h3>
+                  <p class="track-file">{{ track.originalName }}</p>
+                </div>
               </div>
+
+              <ul class="track-tags" role="list">
+                <li>{{ formatAudioType(track.mimeType) }}</li>
+                <li>{{ formatSize(track.size) }}</li>
+                <li>{{ formatDate(track.createdAt) }}</li>
+              </ul>
+
               <!-- TP3 Mission 5 : la suppression demande une confirmation
                    explicite avant de partir vers l'API. -->
               @if (confirmingDeleteId() === track.id) {
-                <div class="track-card-actions confirm" role="group"
-                     [attr.aria-label]="'Confirmer la suppression de ' + track.title">
+                <div
+                  class="track-actions confirm"
+                  role="group"
+                  [attr.aria-label]="'Confirmer la suppression de ' + track.title"
+                >
                   <span class="confirm-question">Supprimer définitivement ?</span>
-                  <button type="button" class="secondary" (click)="cancelDelete()"
-                          [disabled]="deletingId() === track.id">
+                  <button
+                    type="button"
+                    class="ghost"
+                    (click)="cancelDelete()"
+                    [disabled]="deletingId() === track.id"
+                  >
                     Annuler
                   </button>
-                  <button type="button" class="danger" (click)="confirmDelete(track)"
-                          [disabled]="deletingId() !== null">
+                  <button
+                    type="button"
+                    class="danger"
+                    (click)="confirmDelete(track)"
+                    [disabled]="deletingId() !== null"
+                  >
                     {{ deletingId() === track.id ? 'Suppression…' : 'Confirmer' }}
                   </button>
                 </div>
               } @else {
-                <div class="track-card-actions">
+                <div class="track-actions">
+                  @if (currentTrack()?.id === track.id) {
+                    <span class="badge-playing">
+                      <span class="eq" [class.is-animating]="isPlaying()" aria-hidden="true">
+                        <i></i><i></i><i></i>
+                      </span>
+                      {{ isPlaying() ? 'En lecture' : 'En pause' }}
+                    </span>
+                  }
                   <button
                     type="button"
-                    (click)="play(track)"
-                    [disabled]="loadingAudioId() !== null"
-                    [attr.aria-label]="'Lire ' + track.title"
-                  >
-                    {{ loadingAudioId() === track.id ? '…' : '▶ Lire' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary"
+                    class="danger"
                     (click)="askDelete(track)"
                     [disabled]="deletingId() !== null"
                     [attr.aria-label]="'Supprimer ' + track.title"
@@ -144,40 +229,137 @@
             </article>
           </li>
         } @empty {
-          @if (!loading() && !error()) {
-            <li class="empty">Aucune piste. Importez votre premier morceau.</li>
+          @if (!error()) {
+            <li class="empty">
+              <p><b>Aucune piste pour le moment.</b></p>
+              <p class="lede">Importez votre premier morceau avec le panneau de gauche.</p>
+            </li>
           }
         }
       </ul>
+    }
 
-      <!-- Paginator Angular Material : il fournit lui-même les boutons
-           « page précédente » / « page suivante », désactivés aux bornes,
-           ainsi que le sélecteur de taille de page. Chaque interaction
-           déclenche onPageChange() donc une nouvelle requête HTTP. -->
-      <mat-paginator
-        [length]="total()"
-        [pageSize]="limit()"
-        [pageIndex]="page() - 1"
-        [pageSizeOptions]="pageSizeOptions"
-        [disabled]="loading()"
-        (page)="onPageChange($event)"
-        aria-label="Pagination de la bibliothèque"
+    <!-- Paginator Angular Material : il fournit lui-même les boutons
+         « page précédente » / « page suivante », désactivés aux bornes,
+         ainsi que le sélecteur de taille de page. Chaque interaction
+         déclenche onPageChange() donc une nouvelle requête HTTP. -->
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="limit()"
+      [pageIndex]="page() - 1"
+      [pageSizeOptions]="pageSizeOptions"
+      [disabled]="loading()"
+      (page)="onPageChange($event)"
+      aria-label="Pagination de la bibliothèque"
+    />
+  </section>
+</div>
+
+@if (audioError()) {
+  <p class="error audio-error" role="alert">{{ audioError() }}</p>
+}
+
+<!-- ================= Barre de lecture, toujours visible =================
+     Elle est fixée en bas de l'écran et reste affichée même sans lecture en
+     cours : l'utilisateur sait toujours où trouver les commandes. L'espace
+     nécessaire est réservé par le padding-bas de :host (voir le CSS). -->
+<footer class="player" [class.is-idle]="!currentTrack()" aria-label="Lecteur audio">
+  <div class="player-inner">
+    <div class="player-track">
+      <span class="player-art" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V6l10-2v12" />
+          <circle cx="6.5" cy="18" r="2.5" />
+          <circle cx="16.5" cy="16" r="2.5" />
+        </svg>
+      </span>
+
+      @if (currentTrack(); as track) {
+        <span class="player-meta">
+          <b>{{ track.title }}</b>
+          <small>{{ formatAudioType(track.mimeType) }} · {{ formatSize(track.size) }}</small>
+        </span>
+      } @else {
+        <span class="player-meta">
+          <b>Aucune lecture en cours</b>
+          <small>Choisissez une piste dans votre bibliothèque</small>
+        </span>
+      }
+    </div>
+
+    <div class="player-controls">
+      <button
+        type="button"
+        class="player-play"
+        (click)="togglePlay()"
+        [disabled]="!currentTrack()"
+        [attr.aria-label]="isPlaying() ? 'Mettre en pause' : 'Reprendre la lecture'"
+      >
+        @if (isPlaying()) {
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <rect x="6" y="5" width="4" height="14" rx="1" />
+            <rect x="14" y="5" width="4" height="14" rx="1" />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path d="M8 5.5v13l11-6.5z" />
+          </svg>
+        }
+      </button>
+
+      <span class="player-time">{{ formatTime(currentTime()) }}</span>
+
+      <input
+        class="player-seek"
+        type="range"
+        min="0"
+        [max]="duration() || 1"
+        step="0.1"
+        [value]="currentTime()"
+        [disabled]="!currentTrack() || duration() === 0"
+        (input)="seek($event)"
+        aria-label="Position dans le morceau"
       />
-      <p class="pager-state">Page {{ page() }} / {{ pages() }} — {{ total() }} piste(s)</p>
 
-      <!-- ================= Lecteur (Mission 3) ================= -->
-      @if (audioError()) {
-        <p class="error" role="alert">{{ audioError() }}</p>
-      }
+      <span class="player-time">{{ formatTime(duration()) }}</span>
+    </div>
 
-      @if (audioUrl()) {
-        <div class="player">
-          <p class="now-playing" aria-live="polite">
-            Lecture en cours : <b>{{ currentTrack()?.title }}</b>
-          </p>
-          <audio [src]="audioUrl()" controls autoplay (error)="onAudioError()"></audio>
-        </div>
-      }
-    </article>
+    <div class="player-volume">
+      <span aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 10v4h3l4 3V7l-4 3H4Z" />
+          <path d="M15.5 9a3.5 3.5 0 0 1 0 6" />
+        </svg>
+      </span>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        [value]="volume()"
+        (input)="setVolume($event)"
+        aria-label="Volume"
+      />
+    </div>
   </div>
-</section>
+
+  <!-- L'élément <audio> est le moteur réel de la lecture : c'est lui qui reçoit
+       l'ObjectURL du Blob téléchargé de façon authentifiée. Les commandes
+       ci-dessus ne font que le piloter, d'où l'absence de l'attribut `controls`.
+       Il n'est rendu qu'une fois une URL disponible : un `src` vide ferait
+       émettre une erreur de chargement au navigateur. -->
+  @if (audioUrl()) {
+    <audio
+      #player
+      [src]="audioUrl()"
+      (loadedmetadata)="onLoadedMetadata()"
+      (timeupdate)="onTimeUpdate()"
+      (play)="isPlaying.set(true)"
+      (pause)="isPlaying.set(false)"
+      (ended)="onEnded()"
+      (error)="onAudioError()"
+    ></audio>
+  }
+</footer>

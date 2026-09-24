@@ -7,8 +7,8 @@ Ce fichier reprend les missions, les vérifications et les livrables de
 
 | Vérification | Résultat |
 |---|---|
-| `npm run build` (frontend) | ✅ succès, bundle 639 kB brut / 141 kB transféré |
-| `npm test` (frontend) | ✅ **27 tests, 5 fichiers, 0 échec** |
+| `npm run build` (frontend) | ✅ succès, bundle 665 kB brut / 146 kB transféré |
+| `npm test` (frontend) | ✅ **32 tests, 5 fichiers, 0 échec** |
 | `npm test` (backend) | ✅ **11 tests, 0 échec** (2 existants + 9 ajoutés) |
 | Captures Network | ⚠️ à produire — voir la note ci-dessous |
 
@@ -17,7 +17,7 @@ depuis la machine au moment de la rédaction
 (`querySrv ECONNREFUSED _mongodb._tcp.cluster0.xb7iesh.mongodb.net` — cluster
 vraisemblablement en pause côté Atlas). Les captures Network et la démonstration
 en navigateur restent donc à produire après redémarrage du cluster. C'est
-précisément pour cette raison que la Mission 7 a de la valeur : **les 38 tests
+précisément pour cette raison que la Mission 7 a de la valeur : **les 43 tests
 ci-dessus tournent tous sans backend et sans MongoDB.**
 
 ---
@@ -42,9 +42,9 @@ ci-dessus tournent tous sans backend et sans MongoDB.**
 - **Service** : `TrackService.remove(id)` —
   `frontend-starter/src/app/shared/services/track.service.ts:52`
 - **Composant** : `TracksPageComponent` —
-  `askDelete()` (`tracks-page.ts:264`), `cancelDelete()` (`tracks-page.ts:269`),
-  `confirmDelete()` (`tracks-page.ts:277`), `afterDelete()` (`tracks-page.ts:326`)
-- **Template** : bloc de la card, `tracks-page.html:110-142`
+  `askDelete()` (`tracks-page.ts:311`), `cancelDelete()` (`tracks-page.ts:316`),
+  `confirmDelete()` (`tracks-page.ts:324`), `afterDelete()` (`tracks-page.ts:373`)
+- **Template** : bloc de la card, `tracks-page.html:184-229`
 
 Le composant **n'appelle jamais `HttpClient`** : il n'en importe même pas le
 symbole. Il ne connaît que `TrackService`. Seul le service possède
@@ -83,7 +83,7 @@ Confirmation **en deux temps, dans la card elle-même** plutôt qu'un
 après « Supprimer » :  Supprimer définitivement ?  [ Annuler ]  [ Confirmer ]
 ```
 
-Porté par le Signal `confirmingDeleteId` (`tracks-page.ts:79`), qui retient
+Porté par le Signal `confirmingDeleteId` (`tracks-page.ts:87`), qui retient
 l'identifiant de la card en attente. Raisons de ce choix plutôt que la boîte
 native :
 
@@ -97,17 +97,17 @@ native :
 
 ### État de suppression et double clic
 
-Signal `deletingId` (`tracks-page.ts:80`). Deux protections superposées :
+Signal `deletingId` (`tracks-page.ts:88`). Deux protections superposées :
 
 ```ts
-// tracks-page.ts:277 — garde dans le code
+// tracks-page.ts:324 — garde dans le code
 confirmDelete(track: Track): void {
   if (this.deletingId()) return;
   this.deletingId.set(track.id);
   ...
 ```
 ```html
-<!-- tracks-page.html:118 — garde dans l'interface -->
+<!-- tracks-page.html:201 — garde dans l'interface -->
 <button class="danger" (click)="confirmDelete(track)" [disabled]="deletingId() !== null">
   {{ deletingId() === track.id ? 'Suppression…' : 'Confirmer' }}
 </button>
@@ -135,7 +135,7 @@ alignée sur Angular 22.1.4) aux dépendances, et le thème préfabriqué
 
 ### Mise à jour de la page après suppression
 
-`afterDelete()` (`tracks-page.ts:326`) fait trois choses :
+`afterDelete()` (`tracks-page.ts:373`) fait trois choses :
 
 1. si la piste supprimée était **en cours de lecture**, son `Blob` est libéré et
    le lecteur est retiré — sinon on écouterait un morceau qui n'existe plus ;
@@ -165,7 +165,7 @@ const track = await Track.findOneAndDelete({
 C'est volontaire : distinguer « n'existe pas » de « n'est pas à vous »
 apprendrait à un attaquant quels identifiants existent réellement.
 
-Traitement frontend (`tracks-page.ts:298-313`) : message dédié
+Traitement frontend (`tracks-page.ts:345-360`) : message dédié
 « Cette piste n'existe plus ou ne vous appartient pas. », puis **`afterDelete()`
 est appelé quand même**. Le raisonnement : dans les deux cas l'écran affiche une
 information périmée, donc il faut le resynchroniser. Scénario exact visé par le
@@ -259,7 +259,7 @@ Trois conséquences pratiques :
 1. **On ne peut plus traiter la valeur reçue comme la réponse.** Il faut trier
    sur `event.type`, sinon on tenterait de lire `track.id` sur un événement de
    progression. C'est le `if (event.type === HttpEventType.UploadProgress)` /
-   `if (event.type === HttpEventType.Response)` de `tracks-page.ts:199-221`.
+   `if (event.type === HttpEventType.Response)` de `tracks-page.ts:242-264`.
 2. **Le succès n'est pas « l'Observable a émis » mais « l'Observable a émis un
    `Response` ».** Vider le formulaire dès la première émission le viderait
    pendant l'envoi.
@@ -272,7 +272,7 @@ Trois conséquences pratiques :
 ### Comment le pourcentage est calculé
 
 ```ts
-// tracks-page.ts:202
+// tracks-page.ts:245
 this.uploadProgress.set(
   event.total ? Math.round((100 * event.loaded) / event.total) : null,
 );
@@ -304,18 +304,18 @@ readonly uploading = computed(() => this.uploadState() === 'uploading');
 | `success` | événement `Response` reçu | message vert nommant la piste ajoutée |
 | `error` | callback `error` de la souscription | message du serveur, `role="alert"` |
 
-Rendu par un `@switch` (`tracks-page.html:49-73`), donc un seul bloc visible à
+Rendu par un `@switch` (`tracks-page.html:90-114`), donc un seul bloc visible à
 la fois. `uploading` est un `computed()` : l'état dérivé n'est pas dupliqué.
 
 ### Contrôles désactivés et double soumission
 
-- bouton : `[disabled]="!selectedFile() || uploading()"` (`tracks-page.html:42`) ;
+- bouton : `[disabled]="!selectedFile() || uploading()"` (`tracks-page.html:83`) ;
 - champ fichier : `[disabled]="uploading()"` ;
 - champ titre : `title.disable()` / `title.enable()` — par l'API du
   `FormControl`, car avec les Reactive Forms c'est le contrôle qui possède cet
   état, pas le template ;
 - garde dans le code : `if (!file || this.uploading()) return;`
-  (`tracks-page.ts:175`).
+  (`tracks-page.ts:218`).
 
 Vérifié par le test « bloque une seconde soumission pendant un upload en cours » :
 deux `upload()` consécutifs, une seule requête `POST`.
@@ -365,7 +365,7 @@ Ils échouent dans un environnement à bac à sable restreignant les IPC entre
 processus (`[vitest-pool]: Failed to start forks worker`), ce qui n'a rien à voir
 avec le code testé.
 
-### Les tests frontend — 27 tests, 5 fichiers
+### Les tests frontend — 32 tests, 5 fichiers
 
 Le sujet demande **au moins trois** tests parmi une liste. Les sept propositions
 sont couvertes.
@@ -404,7 +404,7 @@ sont couvertes.
 | laisse passer avec un token | retour `true` |
 | redirige sans token | retour `instanceof UrlTree` et `router.serializeUrl(result) === '/login'` |
 
-#### `tracks-page.spec.ts` — 13 tests
+#### `tracks-page.spec.ts` — 18 tests
 
 | Test | Vérifie |
 |---|---|
@@ -421,6 +421,11 @@ sont couvertes.
 | bloque un second clic pendant une suppression | deux `confirmDelete()` → une seule requête |
 | la lecture récupère un `Blob` et publie une `ObjectURL` | `responseType === 'blob'`, `createObjectURL` appelé, `currentTrack()` positionné, **et** `revokeObjectURL` appelé avec la bonne URL après `fixture.destroy()` |
 | affiche une erreur si la lecture est refusée | `404` → message compréhensible, `loadingAudioId()` remis à `null` |
+| affiche la barre de lecture même sans piste en cours | `.player` présent au premier rendu, classe `is-idle`, texte « Aucune lecture en cours », bouton lecture désactivé |
+| affiche la piste en cours dans la barre après un play | `is-idle` retirée, titre de la piste rendu dans `.player`, bouton lecture actif |
+| `formatTime()` rend des durées lisibles | `0` → `0:00`, `9` → `0:09`, `75.4` → `1:15`, `600` → `10:00`, et `NaN` / `Infinity` → `0:00` |
+| `setVolume()` et `onEnded()` mettent à jour l'état | `volume()` = 0.35 ; après `onEnded()`, `isPlaying()` faux et `currentTime()` à 0 |
+| le glisser-déposer valide comme le sélecteur natif | un `.pdf` déposé → `fileError()` et aucun fichier retenu ; un `.mp3` déposé → fichier retenu, erreur effacée |
 
 ### Pourquoi ces tests n'ont pas besoin de MongoDB
 
@@ -554,7 +559,7 @@ secret qui reste sur le serveur.
 ```
 $ cd frontend-starter && npm test
  Test Files  5 passed (5)
-      Tests  27 passed (27)
+      Tests  32 passed (32)
 ```
 
 ```
@@ -569,14 +574,14 @@ $ cd backend && npm test
 ```
 $ cd frontend-starter && npm run build
 Initial chunk files | Names  |  Raw size | Estimated transfer size
-main.js             | main   | 630.35 kB |               139.10 kB
-styles.css          | styles |   8.69 kB |                 1.68 kB
-                    | Initial total | 639.04 kB |            140.78 kB
-Application bundle generation complete. [6.028 seconds]
+main.js             | main   | 653.38 kB |               143.47 kB
+styles.css          | styles |  11.18 kB |                 2.37 kB
+                    | Initial total | 664.56 kB |            145.84 kB
+Application bundle generation complete. [13.383 seconds]
 ```
 
 Aucune erreur TypeScript, aucun avertissement de template. Le volume a augmenté
-d'environ 60 kB par rapport au TP2 : c'est le coût de `@angular/material`
+d'environ 85 kB par rapport au starter : c'est le coût de `@angular/material`
 (paginator, progress bar, snack bar) et du CDK.
 
 ### Network — à capturer
@@ -628,7 +633,7 @@ Réponses résumées ; le détail est dans les sections correspondantes.
 |---|---|
 | Suppression fonctionnelle d'une piste | Fait — commit `TP3 Mission 5` |
 | Progression d'upload | Fait — commit `TP3 Mission 6` (pourcentage réel, pas seulement un état) |
-| Au moins trois tests frontend | Fait — **27 tests** dans 5 fichiers |
+| Au moins trois tests frontend | Fait — **32 tests** dans 5 fichiers |
 | Rapport des tests avec résultats attendus et observés | Fait — tableaux de la Mission 7 |
 | Capture Network d'une suppression et d'un upload | [À COMPLÉTER] |
 | `npm run build` exécuté | Fait — sortie reproduite ci-dessus |

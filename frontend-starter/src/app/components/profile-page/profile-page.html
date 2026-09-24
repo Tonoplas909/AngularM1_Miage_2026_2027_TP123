@@ -1,14 +1,34 @@
 <section class="card">
-  <h1>Mon profil</h1>
-  <button type="button" (click)="load()">Actualiser mon profil</button>
+  <p class="eyebrow">Mon compte</p>
+  <h1>Profil</h1>
+
   @if (auth.currentUser(); as user) {
-    <p>
-      <b>{{ user.name }}</b><br />{{ user.email }}<br />
-      Membre depuis {{ user.createdAt.slice(0, 10) }}
-    </p>
+    <div class="identity">
+      <!-- Initiale de l'utilisateur en guise d'avatar : aucune image à charger. -->
+      <span class="avatar" aria-hidden="true">{{ user.name.charAt(0).toUpperCase() }}</span>
+      <div class="identity-text">
+        <b>{{ user.name }}</b>
+        <small>{{ user.email }}</small>
+        <small class="since">Membre depuis le {{ user.createdAt.slice(0, 10) }}</small>
+      </div>
+    </div>
+
     <form [formGroup]="form" (ngSubmit)="save()">
-      <label>Nouveau nom<input formControlName="name" /></label>
-      <button type="submit">Enregistrer</button>
+      <label for="profile-name">
+        Nouveau nom
+        <input id="profile-name" formControlName="name" autocomplete="name" />
+        @if (form.controls.name.invalid && form.controls.name.touched) {
+          <span class="field-error">Nom requis</span>
+        }
+      </label>
+
+      <div class="profile-actions">
+        <button type="submit" [disabled]="form.invalid">Enregistrer</button>
+        <button type="button" class="ghost" (click)="load()">Actualiser</button>
+      </div>
     </form>
+  } @else {
+    <p class="lede" role="status">Chargement du profil…</p>
+    <button type="button" class="ghost" (click)="load()">Réessayer</button>
   }
 </section>

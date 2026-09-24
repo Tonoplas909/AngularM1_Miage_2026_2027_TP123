@@ -307,6 +307,93 @@ describe('TracksPageComponent', () => {
     revokeSpy.mockRestore();
   });
 
+  // ============ Barre de lecture fixée en bas d'écran ============
+
+  it('affiche la barre de lecture même sans piste en cours', () => {
+    flushInitialLoad([TRACK]);
+
+    const player = fixture.nativeElement.querySelector('.player');
+
+    // « Toujours affichée » : la barre existe dès le premier rendu…
+    expect(player).not.toBeNull();
+    // …dans son état vide, et ses commandes sont inertes.
+    expect(player.classList.contains('is-idle')).toBe(true);
+    expect(player.textContent).toContain('Aucune lecture en cours');
+    expect(player.querySelector('.player-play').disabled).toBe(true);
+  });
+
+  it('affiche la piste en cours dans la barre de lecture après un play', () => {
+    flushInitialLoad([TRACK]);
+
+    const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fausse-url');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+
+    component.play(TRACK);
+    httpTesting
+      .expectOne('/api/tracks/abc123/audio')
+      .flush(new Blob(['octets'], { type: 'audio/mpeg' }));
+    fixture.detectChanges();
+
+    const player = fixture.nativeElement.querySelector('.player');
+
+    expect(player.classList.contains('is-idle')).toBe(false);
+    expect(player.textContent).toContain('Blues en La');
+    expect(player.querySelector('.player-play').disabled).toBe(false);
+
+    vi.restoreAllMocks();
+    createSpy.mockRestore();
+  });
+
+  it('formatTime() rend des durées lisibles', () => {
+    flushInitialLoad();
+
+    expect(component.formatTime(0)).toBe('0:00');
+    expect(component.formatTime(9)).toBe('0:09');
+    expect(component.formatTime(75.4)).toBe('1:15');
+    expect(component.formatTime(600)).toBe('10:00');
+    // Un Blob de durée inconnue donne NaN ou Infinity : on n'affiche pas « NaN ».
+    expect(component.formatTime(Number.NaN)).toBe('0:00');
+    expect(component.formatTime(Number.POSITIVE_INFINITY)).toBe('0:00');
+  });
+
+  it('setVolume() et onEnded() mettent à jour l’état du lecteur', () => {
+    flushInitialLoad();
+
+    component.setVolume({ target: { value: '0.35' } } as unknown as Event);
+
+    expect(component.volume()).toBe(0.35);
+
+    component.isPlaying.set(true);
+    component.currentTime.set(42);
+    component.onEnded();
+
+    expect(component.isPlaying()).toBe(false);
+    expect(component.currentTime()).toBe(0);
+  });
+
+  it('le glisser-déposer valide le fichier comme le sélecteur natif', () => {
+    flushInitialLoad();
+
+    const wrong = new File(['%PDF'], 'partition.pdf', { type: 'application/pdf' });
+    component.onDrop({
+      preventDefault: () => undefined,
+      dataTransfer: { files: [wrong] },
+    } as unknown as DragEvent);
+
+    expect(component.dragging()).toBe(false);
+    expect(component.fileError()).toContain('Format non accepté');
+    expect(component.selectedFile()).toBeUndefined();
+
+    const ok = new File(['audio'], 'blues.mp3', { type: 'audio/mpeg' });
+    component.onDrop({
+      preventDefault: () => undefined,
+      dataTransfer: { files: [ok] },
+    } as unknown as DragEvent);
+
+    expect(component.fileError()).toBe('');
+    expect(component.selectedFile()?.name).toBe('blues.mp3');
+  });
+
   it('affiche une erreur compréhensible si la lecture est refusée', () => {
     flushInitialLoad([TRACK]);
 

@@ -1,17 +1,33 @@
-<header>
-  <div>
-    <b>Guitar Practice Cloud</b>
-    <small>Le cloud qui manque à votre ampli</small>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" routerLink="/tracks">
+      <!-- Marque : un médiator stylisé, en SVG inline pour suivre la couleur
+           d'accent sans requête réseau supplémentaire. -->
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a9 9 0 0 1 9 9c0 5-4 9-9 11-5-2-9-6-9-11a9 9 0 0 1 9-9Z" />
+          <circle cx="12" cy="10" r="2.6" />
+        </svg>
+      </span>
+      <span class="brand-text">
+        <b>Guitar Practice Cloud</b>
+        <small>Le cloud qui manque à votre ampli</small>
+      </span>
+    </a>
+
+    <nav aria-label="Navigation principale">
+      <!-- routerLinkActive marque l'onglet courant : l'utilisateur voit où il
+           est sans avoir à relire l'URL. -->
+      <a routerLink="/tracks" routerLinkActive="is-active">Backing tracks</a>
+      <a routerLink="/profile" routerLinkActive="is-active">Profil</a>
+      @if (auth.token()) {
+        <button type="button" class="ghost" (click)="logout()">Déconnexion</button>
+      } @else {
+        <a routerLink="/login" routerLinkActive="is-active" class="cta">Connexion</a>
+      }
+    </nav>
   </div>
-  <nav aria-label="Navigation principale">
-    <a routerLink="/tracks">Backing tracks</a>
-    <a routerLink="/profile">Profil</a>
-    @if (auth.token()) {
-      <button type="button" (click)="logout()">Déconnexion</button>
-    } @else {
-      <a routerLink="/login">Connexion</a>
-    }
-  </nav>
 </header>
 
 <main>

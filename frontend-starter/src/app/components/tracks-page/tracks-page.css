@@ -1,1 +1,90 @@
 :host { display: block; }
+
+/* Liste sémantique : une <ul role="list"> de cards plutôt qu'une suite de
+   <div>, pour qu'un lecteur d'écran annonce « liste de N éléments ». */
+.tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.8rem;
+}
+
+/* Les cards s'adaptent à la largeur : auto-fill descend à une colonne sur
+   mobile sans media query dédiée. */
+@media (min-width: 560px) {
+  .tracks { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+
+.track-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+  height: 100%;
+  padding: 1rem;
+  background: #f7faf9;
+  border: 1px solid #e1ebe7;
+  border-left: 4px solid #cfded9;
+  border-radius: 12px;
+}
+
+/* La piste en cours est signalée par la couleur ET par le texte
+   « Lecture en cours », pour ne pas reposer uniquement sur la couleur. */
+.track-card.is-playing {
+  background: #eef6f3;
+  border-left-color: #1d755e;
+}
+
+.track-card h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.track-meta {
+  margin: 0 0 0.6rem;
+  color: #61756f;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.track-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track-tags li {
+  padding: 0.15rem 0.5rem;
+  background: #e3ede9;
+  border-radius: 999px;
+  color: #3c5a51;
+  font-size: 0.72rem;
+}
+
+.track-card-actions { display: flex; justify-content: flex-end; }
+
+.empty { color: #61756f; }
+
+.hint { margin: 0.2rem 0; color: #61756f; font-size: 0.8rem; }
+.status { margin: 0.5rem 0 0; min-height: 1.2rem; }
+.success { color: #1d755e; font-weight: 600; }
+
+.player {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: #eef6f3;
+  border-radius: 12px;
+}
+
+.now-playing { margin: 0 0 0.5rem; font-size: 0.9rem; }
+
+/* Un anneau de focus visible reste indispensable pour la navigation clavier. */
+button:focus-visible, input:focus-visible {
+  outline: 3px solid #1d755e;
+  outline-offset: 2px;
+}

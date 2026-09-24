@@ -66,8 +66,6 @@
   font-size: 0.72rem;
 }
 
-.track-card-actions { display: flex; justify-content: flex-end; }
-
 .empty { color: #61756f; }
 
 .hint { margin: 0.2rem 0; color: #61756f; font-size: 0.8rem; }
@@ -88,3 +86,27 @@ button:focus-visible, input:focus-visible {
   outline: 3px solid #1d755e;
   outline-offset: 2px;
 }
+
+.track-card-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+/* La zone de confirmation reprend toute la largeur de la card. */
+.track-card-actions.confirm {
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #cfded9;
+}
+
+.confirm-question {
+  flex: 1 1 100%;
+  color: #8a3b3b;
+  font-size: 0.82rem;
+}
+
+button.secondary {
+  color: #1d755e;
+  background: transparent;
+  border: 1px solid #b8cbc5;
+}
+
+button.danger { background: #a33; }

@@ -26,4 +26,14 @@ export class TrackService {
       responseType: 'blob',
     });
   }
+
+  /**
+   * Supprime une piste. Le backend répond `204 No Content` : il n'y a donc pas
+   * de corps à typer. Il répond `404` si la piste n'existe plus OU si elle
+   * appartient à quelqu'un d'autre — c'est lui, et non le guard Angular, qui
+   * vérifie réellement le propriétaire.
+   */
+  remove(id: string) {
+    return this.http.delete<void>(`/api/tracks/${id}`);
+  }
 }

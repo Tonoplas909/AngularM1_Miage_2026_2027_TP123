@@ -91,16 +91,42 @@
                   <li>Ajouté le {{ formatDate(track.createdAt) }}</li>
                 </ul>
               </div>
-              <div class="track-card-actions">
-                <button
-                  type="button"
-                  (click)="play(track)"
-                  [disabled]="loadingAudioId() !== null"
-                  [attr.aria-label]="'Lire ' + track.title"
-                >
-                  {{ loadingAudioId() === track.id ? '…' : '▶ Lire' }}
-                </button>
-              </div>
+              <!-- TP3 Mission 5 : la suppression demande une confirmation
+                   explicite avant de partir vers l'API. -->
+              @if (confirmingDeleteId() === track.id) {
+                <div class="track-card-actions confirm" role="group"
+                     [attr.aria-label]="'Confirmer la suppression de ' + track.title">
+                  <span class="confirm-question">Supprimer définitivement ?</span>
+                  <button type="button" class="secondary" (click)="cancelDelete()"
+                          [disabled]="deletingId() === track.id">
+                    Annuler
+                  </button>
+                  <button type="button" class="danger" (click)="confirmDelete(track)"
+                          [disabled]="deletingId() !== null">
+                    {{ deletingId() === track.id ? 'Suppression…' : 'Confirmer' }}
+                  </button>
+                </div>
+              } @else {
+                <div class="track-card-actions">
+                  <button
+                    type="button"
+                    (click)="play(track)"
+                    [disabled]="loadingAudioId() !== null"
+                    [attr.aria-label]="'Lire ' + track.title"
+                  >
+                    {{ loadingAudioId() === track.id ? '…' : '▶ Lire' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary"
+                    (click)="askDelete(track)"
+                    [disabled]="deletingId() !== null"
+                    [attr.aria-label]="'Supprimer ' + track.title"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              }
             </article>
           </li>
         } @empty {

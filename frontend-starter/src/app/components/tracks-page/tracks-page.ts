@@ -2,6 +2,7 @@ import { Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@a
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Track } from '../../shared/models/track.model';
 import { TrackService } from '../../shared/services/track.service';
 import {
@@ -21,6 +22,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20];
 export class TracksPageComponent {
   private readonly service = inject(TrackService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly snackBar = inject(MatSnackBar);
 
   // Un input de type file ne se vide pas en remettant un Signal à undefined :
   // il faut remettre à zéro la valeur de l'élément du DOM lui-même.
@@ -47,6 +49,12 @@ export class TracksPageComponent {
   readonly uploading = signal(false);
   readonly uploadError = signal('');
   readonly uploadSuccess = signal('');
+
+  // TP3 Mission 5 : suppression. `confirmingDeleteId` retient la card qui
+  // demande confirmation, `deletingId` celle dont la requête est en cours —
+  // ce qui empêche mécaniquement le double clic.
+  readonly confirmingDeleteId = signal<string | null>(null);
+  readonly deletingId = signal<string | null>(null);
 
   // Mission 3 : états de la lecture.
   readonly audioUrl = signal('');
@@ -202,6 +210,86 @@ export class TracksPageComponent {
         );
       },
     });
+  }
+
+  // ================= TP3 Mission 5 : suppression =================
+
+  /** Premier clic : la card bascule en demande de confirmation. */
+  askDelete(track: Track): void {
+    this.confirmingDeleteId.set(track.id);
+  }
+
+  /** L'utilisateur renonce : on revient à l'affichage normal de la card. */
+  cancelDelete(): void {
+    this.confirmingDeleteId.set(null);
+  }
+
+  /**
+   * Second clic : la suppression part réellement vers l'API. Le composant
+   * n'appelle pas HttpClient lui-même, il passe par TrackService.
+   */
+  confirmDelete(track: Track): void {
+    // Une suppression déjà en cours bloque toute nouvelle soumission.
+    if (this.deletingId()) return;
+
+    this.deletingId.set(track.id);
+
+    this.service.remove(track.id).subscribe({
+      next: () => {
+        console.debug('[TracksPage] Piste supprimée', track.id);
+        this.deletingId.set(null);
+        this.confirmingDeleteId.set(null);
+        this.snackBar.open(`« ${track.title} » a été supprimé.`, 'Fermer', {
+          duration: 4000,
+        });
+        this.afterDelete(track);
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('[TracksPage] Suppression impossible', error);
+        this.deletingId.set(null);
+        this.confirmingDeleteId.set(null);
+
+        if (error.status === 404) {
+          // La piste a disparu entre son affichage et le clic (autre onglet,
+          // autre session), ou elle appartient à quelqu'un d'autre : le backend
+          // ne distingue pas les deux cas, pour ne pas révéler son existence.
+          this.snackBar.open(
+            "Cette piste n'existe plus ou ne vous appartient pas.",
+            'Fermer',
+            { duration: 5000 },
+          );
+          // L'écran est périmé dans les deux cas : on le resynchronise.
+          this.afterDelete(track);
+          return;
+        }
+
+        this.snackBar.open(
+          error.error?.message ?? 'La suppression a échoué. Réessayez.',
+          'Fermer',
+          { duration: 5000 },
+        );
+      },
+    });
+  }
+
+  /**
+   * Remet l'écran en cohérence après une suppression : si la piste supprimée
+   * était la dernière de la page, on recule d'une page pour ne pas afficher une
+   * page vide, puis on redemande la liste au serveur.
+   */
+  private afterDelete(track: Track): void {
+    if (this.currentTrack()?.id === track.id) {
+      // La piste en cours de lecture vient de disparaître : on libère son Blob.
+      this.releaseAudioUrl();
+      this.audioUrl.set('');
+      this.currentTrack.set(null);
+    }
+
+    if (this.tracks().length === 1 && this.page() > 1) {
+      this.page.set(this.page() - 1);
+    }
+
+    this.load();
   }
 
   /** Erreur signalée par l'élément `<audio>` lui-même (flux illisible). */

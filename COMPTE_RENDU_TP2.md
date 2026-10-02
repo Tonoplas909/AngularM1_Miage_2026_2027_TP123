@@ -5,13 +5,12 @@ Les captures d'écran mentionnées doivent être ajoutées au projet (par exempl
 dans un dossier `captures/`) puis liées avec
 `![légende](captures/nom-du-fichier.png)`.
 
-**État de vérification au moment de la rédaction** : `npm run build` passe
-(bundle généré en ~13 s) et les 32 tests frontend du TP3 passent. En revanche le
-cluster MongoDB Atlas du fichier `backend/.env` n'était **pas joignable** depuis
-la machine (`querySrv ECONNREFUSED _mongodb._tcp.cluster0.xb7iesh.mongodb.net`,
-cluster probablement en pause) : les captures Network du checkpoint restent donc
-à produire après avoir redémarré le cluster. Tout ce qui est marqué
-`[À COMPLÉTER]` correspond à ces preuves d'exécution.
+**État de vérification** : `npm run build` passe, les 32 tests frontend et les 11
+tests backend passent, et **tous les points du checkpoint ont été rejoués contre
+le backend réel** connecté à MongoDB Atlas — valeurs observées dans la section
+« Vérification du contrat HTTP contre le backend réel » en fin de document.
+Ce qui reste marqué `[À COMPLÉTER]` correspond uniquement aux **captures
+d'écran**, qui se prennent dans un navigateur.
 
 ---
 
@@ -629,3 +628,57 @@ La refonte n'échange pas l'accessibilité contre l'esthétique :
 - `frontend-starter/src/app/components/register-page/register-page.html` / `.css`
 - `frontend-starter/src/app/components/profile-page/profile-page.html` / `.css`
 - `frontend-starter/src/app/components/tracks-page/tracks-page.spec.ts` (5 tests ajoutés)
+
+---
+
+## Vérification du contrat HTTP contre le backend réel
+
+Le cluster Atlas étant redevenu joignable, chaque point des checkpoints a été
+rejoué contre le backend réel (`npm start` dans `backend/`, base
+`guitar-practice-cloud` sur Atlas). Valeurs effectivement observées :
+
+### TP1 — Checkpoint Network
+
+| Requête | Statut | Réponse / en-tête observé |
+|---|---|---|
+| `POST /api/auth/login` (bons identifiants) | `200` | `{ token, user }` — pas d'`Authorization` en entrée, route publique |
+| `POST /api/auth/login` (mauvais mot de passe) | `401` | `{"message":"Identifiants incorrects"}` |
+| `GET /api/users/me` **avec** JWT | `200` | `{"id":"6aab…","name":"Demo","email":"demo@example.com","createdAt":"2026-09-17T14:20:28.014Z"}` |
+| `GET /api/users/me` **sans** JWT | `401` | rejeté par le middleware `auth` |
+| `PUT /api/users/me` | `200` | utilisateur mis à jour renvoyé |
+
+### TP2 — Checkpoint
+
+| Vérification | Résultat observé |
+|---|---|
+| Chaque changement de page modifie `page` | `?page=1&limit=2` → `page=1, items=["Verification TP2","BOUIN BOUIN"]` ; `?page=2&limit=2` → `page=2, items=["Buisnessman…","Song 1"]` — deux pages **disjointes**, donc découpage bien fait par le serveur |
+| Le serveur borne `limit` | `?limit=500` → `limit` appliqué = **20**. C'est exactement ce qui justifie le réalignement de l'état local sur `response.limit` |
+| Upload multipart `audio` + `title` | `201` + `{"title":"Verification TP2","originalName":"song1.mp3","mimeType":"audio/mpeg","size":3605337}` |
+| La réponse de lecture est un flux audio | `200`, `Content-Type: audio/mpeg`, `Content-Length: 3605337`, **`Accept-Ranges: bytes`** |
+| Erreur `400` pour un fichier invalide | type MIME `text/plain` → `400 {"message":"Format audio non accepté"}` ; sans fichier → `400 {"message":"Fichier audio requis"}` |
+| Une piste n'est lisible que par son propriétaire | second compte créé, lecture de la piste du premier → `404`, et sa propre bibliothèque renvoie `total: 0` |
+
+L'en-tête **`Accept-Ranges: bytes`** est la confirmation directe de la réponse
+donnée plus haut à la question « le backend envoie-t-il le fichier entier en
+mémoire ou progressivement depuis le disque ? » : Express annonce qu'il accepte
+les requêtes partielles, ce qu'un corps construit en mémoire ne permettrait pas.
+
+### TP3 — Vérifications finales
+
+| Vérification | Résultat observé |
+|---|---|
+| `DELETE /api/tracks/:id` par le propriétaire | `204 No Content` |
+| Même `DELETE` rejoué (piste déjà supprimée) | `404` — le cas traité par le message « Cette piste n'existe plus ou ne vous appartient pas. » |
+| `DELETE` par un autre utilisateur | `404`, et la piste reste présente chez son propriétaire |
+| JWT invalide | `401` |
+| `Authorization` sans le préfixe `Bearer ` | `401` |
+| Fichier physique supprimé avec la métadonnée | log `[tracks] Fichier supprimé : …/812da0c6-….mp3`, et `data/uploads` contient exactement autant de fichiers que la base contient de pistes (3 / 3) |
+
+**Ce qui reste à produire par le binôme** : les **captures d'écran** de l'onglet
+Network demandées par les sujets. Les comportements ci-dessus sont vérifiés, mais
+une capture DevTools se prend dans un navigateur. Marche à suivre : `npm start`
+dans `backend/` puis dans `frontend-starter/`, se connecter avec
+`demo@example.com` / `Demo1234!`, ouvrir les DevTools (F12) sur l'onglet Network
+avec « Preserve log » coché, et refaire les gestes du tableau ci-dessus. Pour voir
+la barre de progression de l'upload avancer, brider la connexion sur
+« Slow 3G ».
